@@ -11,12 +11,12 @@ export class DesktopLaunchError extends Error {
  * Starts the Spotify desktop app detached from VS Code, so closing VS Code leaves the music playing.
  * No shell is involved: `command` is executed directly and never interpreted.
  */
-export function launchSpotifyDesktop(command: string): Promise<void> {
+export function launchSpotifyDesktop(command: string, args: readonly string[] = []): Promise<void> {
   const executable = command.trim();
   if (!executable) return Promise.reject(new DesktopLaunchError(command, 'the command is empty'));
 
   return new Promise((resolve, reject) => {
-    const child = spawn(executable, [], { detached: true, stdio: 'ignore', shell: false });
+    const child = spawn(executable, args, { detached: true, stdio: 'ignore', shell: false });
     // "spawn" fires once the process exists; "error" fires instead when the executable is missing.
     child.once('spawn', () => {
       child.unref();

@@ -6,6 +6,7 @@ import { NotLoggedInError, type AuthManager } from './auth/authManager.ts';
 import { LoginCancelledError } from './auth/loopbackServer.ts';
 import { launchSpotifyDesktop } from './device/desktopLauncher.ts';
 import { chooseDevice, isControllable, waitForDevice } from './device/deviceChoice.ts';
+import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
 import type { PlayerState } from './state/playerState.ts';
 
 const NEXT_REPEAT_MODE: Record<RepeatMode, RepeatMode> = { off: 'context', context: 'track', track: 'off' };
@@ -38,6 +39,7 @@ export class SpotifyActions implements vscode.Disposable {
   private readonly player: PlayerState;
   private readonly log: vscode.LogOutputChannel;
   private readonly memento: vscode.Memento;
+  private readonly extensionUri: vscode.Uri;
   private readonly playlistsChangedEmitter = new vscode.EventEmitter<void>();
   private readonly libraryChangedEmitter = new vscode.EventEmitter<void>();
   private readonly devicesChangedEmitter = new vscode.EventEmitter<void>();
@@ -49,12 +51,20 @@ export class SpotifyActions implements vscode.Disposable {
   readonly onDidChangeDevices = this.devicesChangedEmitter.event;
   readonly onDidChangeQueue = this.queueChangedEmitter.event;
 
-  constructor(deps: { api: SpotifyApi; auth: AuthManager; player: PlayerState; log: vscode.LogOutputChannel; memento: vscode.Memento }) {
+  constructor(deps: {
+    api: SpotifyApi;
+    auth: AuthManager;
+    player: PlayerState;
+    log: vscode.LogOutputChannel;
+    memento: vscode.Memento;
+    extensionUri: vscode.Uri;
+  }) {
     this.api = deps.api;
     this.auth = deps.auth;
     this.player = deps.player;
     this.log = deps.log;
     this.memento = deps.memento;
+    this.extensionUri = deps.extensionUri;
   }
 
   // ---- Session ------------------------------------------------------------
@@ -309,8 +319,11 @@ export class SpotifyActions implements vscode.Disposable {
     }
 
     const command = config.get<string>('desktopCommand', 'spotify');
-    this.log.info(`No Spotify devices online; launching "${command}".`);
-    await launchSpotifyDesktop(command);
+    const shouldMinimize = config.get<boolean>('minimizeDesktop', true);
+    this.log.info(`No Spotify devices online; launching "${command}"${shouldMinimize ? ' minimized' : ''}.`);
+    // Spotify honours --minimized only on Windows; Linux gets the window iconified after it appears.
+    await launchSpotifyDesktop(command, shouldMinimize && process.platform === 'win32' ? ['--minimized'] : []);
+    if (shouldMinimize && process.platform === 'linux') void this.minimizeLaunchedWindow();
     const device = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Starting Spotify…', cancellable: true },
       (_progress, cancellation) =>
@@ -327,6 +340,14 @@ export class SpotifyActions implements vscode.Disposable {
     }
     await this.transferTo(device);
     return device;
+  }
+
+  private async minimizeLaunchedWindow(): Promise<void> {
+    const scriptPath = vscode.Uri.joinPath(this.extensionUri, 'scripts', 'minimize_spotify_window.py').fsPath;
+    const { outcome, detail } = await minimizeSpotifyWindow(scriptPath);
+    const message = `Minimizing the Spotify window: ${outcome}${detail ? ` (${detail})` : ''}`;
+    if (outcome === 'minimized') this.log.info(message);
+    else this.log.warn(message);
   }
 
   private async showNoDeviceHelp(): Promise<void> {

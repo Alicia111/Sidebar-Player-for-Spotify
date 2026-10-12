@@ -18,7 +18,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const auth = new AuthManager(context.secrets, log);
   const api = new SpotifyApi(new SpotifyClient({ tokens: auth }));
   const player = new PlayerState(api, auth, log);
-  const actions = new SpotifyActions({ api, auth, player, log, memento: context.globalState });
+  const actions = new SpotifyActions({ api, auth, player, log, memento: context.globalState, extensionUri: context.extensionUri });
 
   const nowPlaying = new NowPlayingViewProvider({ extensionUri: context.extensionUri, api, auth, player, actions, log });
   const playlists = new PlaylistTreeProvider(api, actions);

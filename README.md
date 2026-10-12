@@ -56,6 +56,7 @@ Some desktops already use `Ctrl+Alt+L` to lock the screen. Rebind it under **Key
 | `spotifySidebar.redirectPort` | `8888` | Login callback port. It must match the Redirect URI you registered. |
 | `spotifySidebar.lyrics.enabled` | `true` | Fetch lyrics from lrclib.net. The playing song's title, artist, album and length are sent there. |
 | `spotifySidebar.autoLaunchDesktop` | `true` | Start the Spotify desktop app when no device is online |
+| `spotifySidebar.minimizeDesktop` | `true` | Minimize the desktop app when the extension starts it (Linux: X11/XWayland + `python3`, no extra packages; Windows: `--minimized`) |
 | `spotifySidebar.desktopCommand` | `spotify` | Executable to start (run directly, no shell; user settings only) |
 | `spotifySidebar.pollIntervalMs` | `3000` | Playback refresh interval while Now Playing is visible. The status bar alone polls 5× slower, and nothing polls while VS Code is unfocused. |
 
