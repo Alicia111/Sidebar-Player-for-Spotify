@@ -52,6 +52,15 @@ window.addEventListener('message', (event: MessageEvent<ExtensionMessage>) => {
     case 'runSearch':
       search.searchFor(message.query);
       return;
+    case 'artistAlbums':
+      search.showArtistAlbums(message);
+      return;
+    case 'albumTracks':
+      search.showAlbumTracks(message);
+      return;
+    case 'browseError':
+      search.showBrowseError(message.requestId, message.message);
+      return;
   }
 });
 

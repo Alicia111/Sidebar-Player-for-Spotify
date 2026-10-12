@@ -1,14 +1,23 @@
 import type {
   Artist,
+  ArtistAlbum,
   PlayableItem,
   PlaybackState,
   SearchResponse,
   SimplifiedAlbum,
   SimplifiedPlaylist,
+  SimplifiedTrack,
   SpotifyImage,
   Track,
 } from '../api/types.ts';
-import type { NowPlayingView, SearchItemView, SearchKind, SearchResultsView } from '../shared/protocol.ts';
+import type {
+  AlbumView,
+  ArtistHeaderView,
+  NowPlayingView,
+  SearchItemView,
+  SearchKind,
+  SearchResultsView,
+} from '../shared/protocol.ts';
 
 // Album art comes largest first; a ~300px image is plenty for a sidebar.
 const PREFERRED_IMAGE_WIDTH = 300;
@@ -122,4 +131,32 @@ function toSearchItemView(
       };
     }
   }
+}
+
+const ALBUM_TYPE_LABELS: Record<ArtistAlbum['album_type'], string> = { album: 'Album', single: 'Single', compilation: 'Compilation' };
+
+export function toArtistHeaderView(artist: Artist): ArtistHeaderView {
+  const genres = (artist.genres ?? []).slice(0, 3).join(', ');
+  return { uri: artist.uri, name: artist.name, subtitle: genres || 'Artist', imageUrl: pickImageUrl(artist.images) };
+}
+
+export function toAlbumView(album: ArtistAlbum): AlbumView {
+  const year = album.release_date?.slice(0, 4);
+  const trackCount = `${album.total_tracks} ${album.total_tracks === 1 ? 'track' : 'tracks'}`;
+  const parts = [ALBUM_TYPE_LABELS[album.album_type] ?? 'Album', year, trackCount].filter(Boolean);
+  return { uri: album.uri, title: album.name, subtitle: parts.join(' · '), imageUrl: pickImageUrl(album.images) };
+}
+
+/** Album tracks play inside their album, so playback continues with the next track. */
+export function toAlbumTrackViews(tracks: SimplifiedTrack[], albumUri: string, likedState: Map<string, boolean>): SearchItemView[] {
+  return tracks.map((track) => ({
+    uri: track.uri,
+    kind: 'track',
+    title: track.name,
+    subtitle: track.artists.map((artist) => artist.name).join(', '),
+    imageUrl: null,
+    durationMs: track.duration_ms,
+    isLiked: likedState.get(track.uri),
+    contextUri: albumUri,
+  }));
 }

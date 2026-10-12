@@ -363,3 +363,75 @@ button {
     visibility: visible;
   }
 }
+
+/* ---- Artist page ------------------------------------------------------ */
+
+.result.is-browsable {
+  cursor: pointer;
+}
+
+.artist-page {
+  padding-top: var(--gap);
+}
+
+.artist-header {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding-bottom: var(--gap);
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+
+.artist-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.artist-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.artist-name {
+  font-size: 1.15em;
+  font-weight: 600;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.album-list {
+  list-style: none;
+  margin: var(--gap) 0 0;
+  padding: 0;
+}
+
+.album-row {
+  cursor: pointer;
+}
+
+.album-row > .icon-button {
+  width: 20px;
+  height: 20px;
+}
+
+.album-row > .icon-button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Tracks sit under their album, indented and without repeating the cover. */
+.album-tracks {
+  margin-left: 28px;
+}
+
+.album-tracks .thumb {
+  display: none;
+}
+
+.album > .search-status {
+  margin-left: 32px;
+}

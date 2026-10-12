@@ -1,5 +1,7 @@
 import type { SpotifyClient } from './spotifyClient.ts';
 import type {
+  Artist,
+  ArtistAlbum,
   CurrentUser,
   Device,
   Paging,
@@ -11,12 +13,16 @@ import type {
   SearchResponse,
   SearchType,
   SimplifiedPlaylist,
+  SimplifiedTrack,
 } from './types.ts';
 
 // Limits from the February 2026 Web API rules.
 export const SEARCH_PAGE_SIZE = 10;
 export const LIBRARY_URI_BATCH_SIZE = 40;
 const COLLECTION_PAGE_SIZE = 50;
+// The February 2026 rules cap an artist's album listing at 10 per page.
+export const ARTIST_ALBUMS_PAGE_SIZE = 10;
+const ARTIST_ALBUM_GROUPS = 'album,single';
 const PLAYLIST_ADD_BATCH_SIZE = 100;
 const CONTEXT_PATHS: Record<string, string> = { playlist: '/playlists', album: '/albums', artist: '/artists', show: '/shows' };
 
@@ -129,6 +135,30 @@ export class SpotifyApi {
       query: { q: query, type, limit: page.limit ?? SEARCH_PAGE_SIZE, offset: page.offset },
     });
     return response ?? {};
+  }
+
+  // ---- Artists & albums ---------------------------------------------------
+
+  async getArtist(artistId: string): Promise<Artist> {
+    const path = `/artists/${encodeURIComponent(artistId)}`;
+    return requireBody(await this.client.request<Artist>('GET', path), `GET ${path}`);
+  }
+
+  /** The artist's own albums and singles (not compilations or guest appearances), newest first. */
+  async getArtistAlbums(artistId: string, page: PageRequest): Promise<Paging<ArtistAlbum>> {
+    const path = `/artists/${encodeURIComponent(artistId)}/albums`;
+    const response = await this.client.request<Paging<ArtistAlbum>>('GET', path, {
+      query: { include_groups: ARTIST_ALBUM_GROUPS, limit: page.limit ?? ARTIST_ALBUMS_PAGE_SIZE, offset: page.offset },
+    });
+    return requireBody(response, `GET ${path}`);
+  }
+
+  async getAlbumTracks(albumId: string, page: PageRequest): Promise<Paging<SimplifiedTrack>> {
+    const path = `/albums/${encodeURIComponent(albumId)}/tracks`;
+    const response = await this.client.request<Paging<SimplifiedTrack>>('GET', path, {
+      query: { limit: page.limit ?? COLLECTION_PAGE_SIZE, offset: page.offset },
+    });
+    return requireBody(response, `GET ${path}`);
   }
 
   // ---- User & playlists ---------------------------------------------------

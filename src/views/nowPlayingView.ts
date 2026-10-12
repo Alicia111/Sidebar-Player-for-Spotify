@@ -1,8 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import { describeError, type SpotifyActions } from '../actions.ts';
-import type { SpotifyApi } from '../api/endpoints.ts';
-import type { SearchResponse } from '../api/types.ts';
+import { collectPages, type SpotifyApi } from '../api/endpoints.ts';
 import type { AuthManager } from '../auth/authManager.ts';
 import {
   parseWebviewMessage,
@@ -12,9 +11,11 @@ import {
   type WebviewMessage,
 } from '../shared/protocol.ts';
 import type { PlayerState } from '../state/playerState.ts';
-import { toSearchResultsView } from '../state/viewModels.ts';
+import { toAlbumTrackViews, toAlbumView, toArtistHeaderView, toSearchResultsView } from '../state/viewModels.ts';
 
 export const NOW_PLAYING_VIEW_ID = 'spotifySidebar.nowPlaying';
+// Albums longer than this are rare; it bounds requests for box sets.
+const MAX_ALBUM_TRACKS = 200;
 // Spotify serves cover art from these CDNs.
 const IMAGE_SOURCES = 'https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com';
 
@@ -112,6 +113,10 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
         return;
       case 'addToPlaylist':
         return this.actions.addToPlaylist(message.uri);
+      case 'artistAlbums':
+        return this.loadArtistAlbums(message.requestId, message.artistUri, message.offset);
+      case 'albumTracks':
+        return this.loadAlbumTracks(message.requestId, message.albumUri);
     }
   }
 
@@ -142,7 +147,8 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
   private async search(requestId: number, query: string, kind: SearchKind, offset: number): Promise<void> {
     try {
       const response = await this.api.search(query, kind, { offset });
-      const likedState = await this.lookUpLikedTracks(response);
+      const trackUris = (response.tracks?.items ?? []).flatMap((track) => (track && !track.is_local ? [track.uri] : []));
+      const likedState = await this.lookUpLiked(trackUris);
       this.post({ type: 'searchResults', requestId, offset, results: toSearchResultsView(kind, response, likedState) });
     } catch (error) {
       this.log.warn(`Search "${query}" (${kind}) failed: ${describeError(error)}`);
@@ -150,16 +156,49 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
     }
   }
 
-  /** Like state is a nice-to-have on search results; failure just leaves hearts unknown. */
-  private async lookUpLikedTracks(response: SearchResponse): Promise<Map<string, boolean>> {
-    const uris = (response.tracks?.items ?? []).flatMap((track) => (track && !track.is_local ? [track.uri] : []));
+  /** First page also carries the artist header, so the page can render in one round trip. */
+  private async loadArtistAlbums(requestId: number, artistUri: string, offset: number): Promise<void> {
+    const artistId = spotifyIdOf(artistUri);
+    try {
+      const [artist, page] = await Promise.all([
+        offset === 0 ? this.api.getArtist(artistId) : Promise.resolve(undefined),
+        this.api.getArtistAlbums(artistId, { offset }),
+      ]);
+      this.post({
+        type: 'artistAlbums',
+        requestId,
+        offset,
+        artist: artist ? toArtistHeaderView(artist) : undefined,
+        albums: page.items.map(toAlbumView),
+        hasMore: page.next !== null,
+      });
+    } catch (error) {
+      this.log.warn(`Loading albums of ${artistUri} failed: ${describeError(error)}`);
+      this.post({ type: 'browseError', requestId, message: describeError(error) });
+    }
+  }
+
+  private async loadAlbumTracks(requestId: number, albumUri: string): Promise<void> {
+    try {
+      const albumId = spotifyIdOf(albumUri);
+      const { items } = await collectPages((page) => this.api.getAlbumTracks(albumId, page), MAX_ALBUM_TRACKS);
+      const likedState = await this.lookUpLiked(items.filter((track) => !track.is_local).map((track) => track.uri));
+      this.post({ type: 'albumTracks', requestId, albumUri, tracks: toAlbumTrackViews(items, albumUri, likedState) });
+    } catch (error) {
+      this.log.warn(`Loading tracks of ${albumUri} failed: ${describeError(error)}`);
+      this.post({ type: 'browseError', requestId, message: describeError(error) });
+    }
+  }
+
+  /** Like state is a nice-to-have on result lists; failure just leaves hearts unknown. */
+  private async lookUpLiked(uris: string[]): Promise<Map<string, boolean>> {
     if (uris.length === 0) return new Map();
     try {
       const likedState = await this.api.libraryContains(uris);
       likedState.forEach((isLiked, uri) => this.player.setLiked(uri, isLiked));
       return likedState;
     } catch (error) {
-      this.log.warn(`Checking liked state for search results failed: ${describeError(error)}`);
+      this.log.warn(`Checking liked state for ${uris.length} tracks failed: ${describeError(error)}`);
       return new Map();
     }
   }
@@ -204,4 +243,9 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
 </body>
 </html>`;
   }
+}
+
+/** `spotify:artist:abc` → `abc`; callers pass URIs already validated by the protocol parser. */
+function spotifyIdOf(uri: string): string {
+  return uri.split(':')[2];
 }

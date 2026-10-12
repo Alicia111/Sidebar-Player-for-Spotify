@@ -40,6 +40,20 @@ export interface SearchItemView {
   contextUri?: string;
 }
 
+export interface ArtistHeaderView {
+  uri: string;
+  name: string;
+  subtitle: string;
+  imageUrl: string | null;
+}
+
+export interface AlbumView {
+  uri: string;
+  title: string;
+  subtitle: string;
+  imageUrl: string | null;
+}
+
 export interface SearchResultsView {
   items: SearchItemView[];
   hasMore: boolean;
@@ -74,7 +88,18 @@ export type ExtensionMessage =
   | { type: 'searchResults'; requestId: number; offset: number; results: SearchResultsView }
   | { type: 'searchError'; requestId: number; message: string }
   | { type: 'likeChanged'; uri: string; isLiked: boolean }
-  | { type: 'runSearch'; query: string };
+  | { type: 'runSearch'; query: string }
+  | {
+      type: 'artistAlbums';
+      requestId: number;
+      offset: number;
+      /** Only sent with the first page. */
+      artist?: ArtistHeaderView;
+      albums: AlbumView[];
+      hasMore: boolean;
+    }
+  | { type: 'albumTracks'; requestId: number; albumUri: string; tracks: SearchItemView[] }
+  | { type: 'browseError'; requestId: number; message: string };
 
 export type WebviewMessage =
   | { type: 'ready' }
@@ -85,7 +110,9 @@ export type WebviewMessage =
   | { type: 'play'; uri: string; contextUri?: string }
   | { type: 'queue'; uri: string }
   | { type: 'setLiked'; uri: string; isLiked: boolean }
-  | { type: 'addToPlaylist'; uri: string };
+  | { type: 'addToPlaylist'; uri: string }
+  | { type: 'artistAlbums'; requestId: number; artistUri: string; offset: number }
+  | { type: 'albumTracks'; requestId: number; albumUri: string };
 
 const MAX_QUERY_LENGTH = 200;
 const MAX_SEARCH_OFFSET = 1000;
@@ -121,6 +148,18 @@ export function parseWebviewMessage(raw: unknown): WebviewMessage | null {
     case 'queue':
     case 'addToPlaylist':
       return isSpotifyUri(message.uri) ? { type: message.type, uri: message.uri } : null;
+    case 'artistAlbums':
+      return Number.isSafeInteger(message.requestId) &&
+        isSpotifyUri(message.artistUri) &&
+        message.artistUri.startsWith('spotify:artist:') &&
+        Number.isSafeInteger(message.offset) &&
+        isFiniteInRange(message.offset, 0, MAX_SEARCH_OFFSET)
+        ? { type: 'artistAlbums', requestId: message.requestId as number, artistUri: message.artistUri, offset: message.offset }
+        : null;
+    case 'albumTracks':
+      return Number.isSafeInteger(message.requestId) && isSpotifyUri(message.albumUri) && message.albumUri.startsWith('spotify:album:')
+        ? { type: 'albumTracks', requestId: message.requestId as number, albumUri: message.albumUri }
+        : null;
     case 'setLiked':
       return isSpotifyUri(message.uri) && typeof message.isLiked === 'boolean'
         ? { type: 'setLiked', uri: message.uri, isLiked: message.isLiked }

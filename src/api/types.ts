@@ -26,6 +26,25 @@ export interface SimplifiedAlbum {
   release_date?: string;
 }
 
+/** An album as listed on an artist's discography page. */
+export interface ArtistAlbum extends SimplifiedAlbum {
+  album_type: 'album' | 'single' | 'compilation';
+  total_tracks: number;
+}
+
+/** A track inside an album listing, which omits the album itself. */
+export interface SimplifiedTrack {
+  type: 'track';
+  id: string | null;
+  name: string;
+  uri: string;
+  duration_ms: number;
+  artists: SimplifiedArtist[];
+  track_number: number;
+  disc_number: number;
+  is_local?: boolean;
+}
+
 export interface Track {
   type: 'track';
   id: string | null;

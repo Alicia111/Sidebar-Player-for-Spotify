@@ -1,5 +1,13 @@
 import { formatDuration } from '../shared/format.ts';
-import { SEARCH_KINDS, type SearchItemView, type SearchKind, type SearchResultsView } from '../shared/protocol.ts';
+import {
+  SEARCH_KINDS,
+  type AlbumView,
+  type ArtistHeaderView,
+  type SearchItemView,
+  type SearchKind,
+  type SearchResultsView,
+} from '../shared/protocol.ts';
+import { ArtistPage } from './artistPage.ts';
 import { loadState, saveState, send } from './bridge.ts';
 import { coverImage, h, icon, iconButton, setIcon } from './dom.ts';
 
@@ -17,7 +25,12 @@ export class SearchPanel {
   private readonly results = h('ul', { className: 'results' });
   private readonly status = h('div', { className: 'search-status' });
   private readonly loadMoreButton = h('button', { className: 'link-button load-more', text: 'Load more', attributes: { type: 'button' } });
-  private readonly likeButtons = new Map<string, HTMLButtonElement>();
+  /** Wraps tabs and results so the artist page can take their place. */
+  private readonly resultsSection = h('div', { className: 'search-results' });
+  private readonly artistPage = new ArtistPage({
+    onBack: () => this.closeArtist(),
+    renderTrack: (item) => this.renderItem(item),
+  });
 
   private kind: SearchKind = 'track';
   private latestRequestId = 0;
@@ -42,13 +55,8 @@ export class SearchPanel {
     });
     this.loadMoreButton.addEventListener('click', () => this.runSearch(this.nextOffset));
 
-    this.element.append(
-      h('div', { className: 'search-box' }, [icon('search'), this.input]),
-      this.tabs,
-      this.status,
-      this.results,
-      this.loadMoreButton,
-    );
+    this.resultsSection.append(this.tabs, this.status, this.results, this.loadMoreButton);
+    this.element.append(h('div', { className: 'search-box' }, [icon('search'), this.input]), this.resultsSection, this.artistPage.element);
     this.renderTabs();
     this.loadMoreButton.hidden = true;
   }
@@ -66,10 +74,7 @@ export class SearchPanel {
 
   showResults(requestId: number, offset: number, results: SearchResultsView): void {
     if (requestId !== this.latestRequestId) return;
-    if (offset === 0) {
-      this.results.replaceChildren();
-      this.likeButtons.clear();
-    }
+    if (offset === 0) this.results.replaceChildren();
     this.results.append(...results.items.map((item) => this.renderItem(item)));
     this.nextOffset = offset + results.items.length;
     this.loadMoreButton.hidden = !results.hasMore;
@@ -81,9 +86,33 @@ export class SearchPanel {
     this.status.textContent = `Search failed: ${message}`;
   }
 
+  /** The same track can be listed in search results and in an artist's album at once; update every copy. */
   updateLike(uri: string, isLiked: boolean): void {
-    const button = this.likeButtons.get(uri);
-    if (button) renderLikeButton(button, isLiked);
+    for (const button of this.element.querySelectorAll<HTMLButtonElement>('button[data-like-uri]')) {
+      if (button.dataset.likeUri === uri) renderLikeButton(button, isLiked);
+    }
+  }
+
+  showArtistAlbums(message: { requestId: number; offset: number; artist?: ArtistHeaderView; albums: AlbumView[]; hasMore: boolean }): void {
+    this.artistPage.showAlbums(message);
+  }
+
+  showAlbumTracks(message: { requestId: number; albumUri: string; tracks: SearchItemView[] }): void {
+    this.artistPage.showAlbumTracks(message);
+  }
+
+  showBrowseError(requestId: number, message: string): void {
+    this.artistPage.showError(requestId, message);
+  }
+
+  private openArtist(item: SearchItemView): void {
+    this.resultsSection.hidden = true;
+    this.artistPage.open({ uri: item.uri, name: item.title, imageUrl: item.imageUrl });
+  }
+
+  private closeArtist(): void {
+    this.artistPage.close();
+    this.resultsSection.hidden = false;
   }
 
   private selectKind(kind: SearchKind): void {
@@ -111,10 +140,10 @@ export class SearchPanel {
     const query = this.input.value.trim();
     saveState({ query, kind: this.kind });
     this.latestRequestId++;
+    if (offset === 0) this.closeArtist();
 
     if (!query) {
       this.results.replaceChildren();
-      this.likeButtons.clear();
       this.status.textContent = '';
       this.loadMoreButton.hidden = true;
       return;
@@ -144,9 +173,17 @@ export class SearchPanel {
       ]),
       actions,
     ]);
-    row.addEventListener('dblclick', () => playItem(item));
+    // Artists open their discography; everything else plays on double-click or Enter.
+    const activate = item.kind === 'artist' ? () => this.openArtist(item) : () => playItem(item);
+    if (item.kind === 'artist') {
+      row.classList.add('is-browsable');
+      row.title = `Show all songs by ${item.title}`;
+      row.addEventListener('click', activate);
+    } else {
+      row.addEventListener('dblclick', activate);
+    }
     row.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' && event.target === row) playItem(item);
+      if (event.key === 'Enter' && event.target === row) activate();
     });
     return row;
   }
@@ -157,8 +194,8 @@ export class SearchPanel {
       label: 'Save to Liked Songs',
       onClick: () => send({ type: 'setLiked', uri: item.uri, isLiked: button.dataset.liked !== 'true' }),
     });
+    button.dataset.likeUri = item.uri;
     renderLikeButton(button, item.isLiked === true);
-    this.likeButtons.set(item.uri, button);
     return button;
   }
 }
