@@ -7,8 +7,8 @@ import { SearchPanel } from './searchPanel.ts';
 const app = document.getElementById('app');
 if (!app) throw new Error('Now Playing webview is missing its #app root element');
 
-const player = new PlayerPanel();
 const search = new SearchPanel();
+const player = new PlayerPanel({ onOpenArtist: (artist) => search.showArtist(artist) });
 const loginButton = h('button', { className: 'primary-button', text: 'Log in to Spotify', attributes: { type: 'button' } });
 loginButton.addEventListener('click', () => send({ type: 'command', command: 'login' }));
 const loginPanel = h('section', { className: 'login' }, [

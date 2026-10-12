@@ -5,6 +5,7 @@ import type {
   PlaybackState,
   SearchResponse,
   SimplifiedAlbum,
+  SimplifiedArtist,
   SimplifiedPlaylist,
   SimplifiedTrack,
   SpotifyImage,
@@ -12,6 +13,7 @@ import type {
 } from '../api/types.ts';
 import type {
   AlbumView,
+  ArtistLinkView,
   ArtistHeaderView,
   NowPlayingView,
   SearchItemView,
@@ -34,6 +36,13 @@ export function joinArtistNames(credited: { artists: readonly { name: string }[]
   return credited.artists.map((artist) => artist.name).join(', ');
 }
 
+const ARTIST_URI_PREFIX = 'spotify:artist:';
+
+/** Local files credit artists that have no Spotify page; those stay plain text. */
+export function toArtistLinks(artists: readonly SimplifiedArtist[]): ArtistLinkView[] {
+  return artists.map((artist) => ({ uri: artist.uri?.startsWith(ARTIST_URI_PREFIX) ? artist.uri : null, name: artist.name }));
+}
+
 /** Local files and episodes can't be saved through the library endpoints we use. */
 export function isLikeable(item: PlayableItem): boolean {
   return item.type === 'track' && !item.is_local;
@@ -53,6 +62,7 @@ export function toNowPlayingView(
           uri: item.uri,
           title: item.name,
           subtitle: item.type === 'track' ? joinArtistNames(item) : item.show?.name ?? 'Podcast',
+          artists: item.type === 'track' ? toArtistLinks(item.artists) : [],
           imageUrl: pickImageUrl(item.type === 'track' ? item.album.images : item.images),
           durationMs: item.duration_ms,
           isLiked: isLikeable(item) ? likedState.get(item.uri) : undefined,
@@ -105,6 +115,8 @@ function toSearchItemView(
         kind,
         title: track.name,
         subtitle: `${joinArtistNames(track)} · ${track.album.name}`,
+        artists: toArtistLinks(track.artists),
+        subtitleDetail: track.album.name,
         imageUrl: pickImageUrl(track.album.images),
         durationMs: track.duration_ms,
         isLiked: likedState.get(track.uri),
@@ -155,6 +167,7 @@ export function toAlbumTrackViews(tracks: SimplifiedTrack[], albumUri: string, l
     kind: 'track',
     title: track.name,
     subtitle: joinArtistNames(track),
+    artists: toArtistLinks(track.artists),
     imageUrl: null,
     durationMs: track.duration_ms,
     isLiked: likedState.get(track.uri),

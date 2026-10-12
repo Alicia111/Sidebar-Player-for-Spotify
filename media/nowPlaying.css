@@ -109,6 +109,16 @@ button {
   text-decoration: underline;
 }
 
+/* Artist names inside a subtitle read as plain text until hovered. */
+.artist-link {
+  color: inherit;
+  font: inherit;
+}
+
+.artist-link:hover {
+  color: var(--vscode-textLink-foreground);
+}
+
 /* ---- Login ------------------------------------------------------------ */
 
 .login {

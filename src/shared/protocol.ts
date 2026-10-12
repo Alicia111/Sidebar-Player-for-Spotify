@@ -9,7 +9,10 @@ export const SEARCH_KINDS: readonly SearchKind[] = ['track', 'album', 'artist', 
 export interface NowPlayingTrackView {
   uri: string;
   title: string;
+  /** The whole line as text, also used as its tooltip. */
   subtitle: string;
+  /** Credited artists, rendered as links; empty for podcast episodes, whose subtitle is the show. */
+  artists: ArtistLinkView[];
   imageUrl: string | null;
   durationMs: number;
   /** Undefined while unknown or for items that can't be liked (local files, episodes). */
@@ -28,11 +31,22 @@ export interface NowPlayingView {
   volumePercent: number | null;
 }
 
+/** An artist credited on a track; `uri` is null for artists without a Spotify page (local files). */
+export interface ArtistLinkView {
+  uri: string | null;
+  name: string;
+}
+
 export interface SearchItemView {
   uri: string;
   kind: SearchKind;
   title: string;
+  /** The whole line as text, also used as its tooltip. */
   subtitle: string;
+  /** For tracks: credited artists, rendered as links at the start of the subtitle line. */
+  artists?: ArtistLinkView[];
+  /** For tracks: what follows the artist names on the subtitle line, e.g. the album. */
+  subtitleDetail?: string;
   imageUrl: string | null;
   durationMs?: number;
   isLiked?: boolean;

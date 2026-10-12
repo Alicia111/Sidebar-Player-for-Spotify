@@ -3,7 +3,7 @@
 Control Spotify without leaving the editor:
 
 - **Now Playing** sidebar view: cover art, seekable progress bar, play/pause, next/previous, shuffle, repeat, volume, like button and device switcher
-- **Search** songs, albums, artists and playlists, then play, queue, like or add results to a playlist
+- **Search** songs, albums, artists and playlists, then play, queue, like or add results to a playlist. Click an artist's name on a song to open their albums and singles.
 - **Queue** tree: where playback comes from (playlist, album, artist or Liked Songs), the current track and what plays next. Click an upcoming track to jump to it.
 - **Playlists** tree: Liked Songs and your playlists. Click a track to play it in context. The context menu adds to queue, likes/unlikes or adds to another playlist.
 - **Devices** tree: see your Spotify Connect devices and move playback between them

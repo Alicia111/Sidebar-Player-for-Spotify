@@ -3,10 +3,12 @@ import {
   SEARCH_KINDS,
   type AlbumView,
   type ArtistHeaderView,
+  type ArtistLinkView,
   type SearchItemView,
   type SearchKind,
   type SearchResultsView,
 } from '../shared/protocol.ts';
+import { appendArtistCredits } from './artistLinks.ts';
 import { ArtistPage } from './artistPage.ts';
 import { loadState, saveState, send } from './bridge.ts';
 import { coverImage, h, icon, iconButton, setIcon } from './dom.ts';
@@ -106,9 +108,15 @@ export class SearchPanel {
     this.artistPage.showError(requestId, message);
   }
 
-  private openArtist(item: SearchItemView): void {
+  /** Opens an artist from outside the result list (Now Playing) and brings the page into view. */
+  showArtist(artist: { uri: string; name: string }): void {
+    this.openArtist({ ...artist, imageUrl: null });
+    this.artistPage.element.scrollIntoView({ block: 'start' });
+  }
+
+  private openArtist(artist: { uri: string; name: string; imageUrl: string | null }): void {
     this.resultsSection.hidden = true;
-    this.artistPage.open({ uri: item.uri, name: item.title, imageUrl: item.imageUrl });
+    this.artistPage.open(artist);
   }
 
   private closeArtist(): void {
@@ -172,12 +180,13 @@ export class SearchPanel {
       coverImage(item.imageUrl, 'thumb'),
       h('div', { className: 'result-meta' }, [
         h('div', { className: 'result-title', text: item.title, title: item.title }),
-        h('div', { className: 'result-subtitle', text: subtitle, title: subtitle }),
+        item.artists?.length ? this.renderCredits(item, item.artists, subtitle) : h('div', { className: 'result-subtitle', text: subtitle, title: subtitle }),
       ]),
       actions,
     ]);
     // Artists open their discography; everything else plays on double-click or Enter.
-    const activate = item.kind === 'artist' ? () => this.openArtist(item) : () => playItem(item);
+    const activate =
+      item.kind === 'artist' ? () => this.openArtist({ uri: item.uri, name: item.title, imageUrl: item.imageUrl }) : () => playItem(item);
     if (item.kind === 'artist') {
       row.classList.add('is-browsable');
       row.title = `Show all songs by ${item.title}`;
@@ -189,6 +198,17 @@ export class SearchPanel {
       if (event.key === 'Enter' && event.target === row) activate();
     });
     return row;
+  }
+
+  /** "Artist A, Artist B · Album · 3:45", with each artist name opening that artist's page. */
+  private renderCredits(item: SearchItemView, artists: ArtistLinkView[], fullText: string): HTMLElement {
+    const line = h('div', { className: 'result-subtitle', title: fullText });
+    appendArtistCredits(line, artists, (artist) => this.openArtist({ ...artist, imageUrl: null }));
+    const details = [item.subtitleDetail, item.durationMs === undefined ? undefined : formatDuration(item.durationMs)];
+    for (const detail of details) {
+      if (detail) line.append(` · ${detail}`);
+    }
+    return line;
   }
 
   private createLikeButton(item: SearchItemView): HTMLButtonElement {

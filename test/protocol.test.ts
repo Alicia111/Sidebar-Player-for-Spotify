@@ -4,7 +4,7 @@ import { chunk, collectPages } from '../src/api/endpoints.ts';
 import type { PlaybackState, SearchResponse, Track } from '../src/api/types.ts';
 import { formatDuration } from '../src/shared/format.ts';
 import { parseWebviewMessage } from '../src/shared/protocol.ts';
-import { pickImageUrl, toNowPlayingView, toSearchResultsView } from '../src/state/viewModels.ts';
+import { pickImageUrl, toArtistLinks, toNowPlayingView, toSearchResultsView } from '../src/state/viewModels.ts';
 
 const sampleTrack: Track = {
   type: 'track',
@@ -77,6 +77,10 @@ describe('view models', () => {
       uri: sampleTrack.uri,
       title: 'Song',
       subtitle: 'Artist One, Artist Two',
+      artists: [
+        { uri: 'spotify:artist:a1', name: 'Artist One' },
+        { uri: 'spotify:artist:a2', name: 'Artist Two' },
+      ],
       imageUrl: 'https://i.scdn.co/image/mid',
       durationMs: 200_000,
       isLiked: true,
@@ -94,6 +98,11 @@ describe('view models', () => {
     assert.equal(results.items.length, 1);
     assert.equal(results.items[0].isLiked, false);
     assert.equal(results.items[0].subtitle, 'Artist One, Artist Two · Album');
+    assert.deepEqual(results.items[0].artists, [
+      { uri: 'spotify:artist:a1', name: 'Artist One' },
+      { uri: 'spotify:artist:a2', name: 'Artist Two' },
+    ]);
+    assert.equal(results.items[0].subtitleDetail, 'Album');
     assert.equal(results.hasMore, true);
     assert.equal(results.items[0].contextUri, 'spotify:album:al');
   });
@@ -123,5 +132,21 @@ describe('formatDuration', () => {
     assert.equal(formatDuration(0), '0:00');
     assert.equal(formatDuration(65_000), '1:05');
     assert.equal(formatDuration(3_725_000), '1:02:05');
+  });
+});
+
+describe('toArtistLinks', () => {
+  it('keeps artists without a Spotify page as plain names', () => {
+    // Local files report artists with an empty or non-artist URI.
+    const links = toArtistLinks([
+      { id: 'a1', name: 'Linked', uri: 'spotify:artist:a1' },
+      { id: '', name: 'Local Artist', uri: '' },
+      { id: '', name: 'Odd', uri: 'spotify:local:Odd' },
+    ]);
+    assert.deepEqual(links, [
+      { uri: 'spotify:artist:a1', name: 'Linked' },
+      { uri: null, name: 'Local Artist' },
+      { uri: null, name: 'Odd' },
+    ]);
   });
 });

@@ -62,6 +62,10 @@ describe('artist view models', () => {
       kind: 'track',
       title: 'Opening',
       subtitle: 'Test Artist, Guest',
+      artists: [
+        { uri: 'spotify:artist:ar1', name: 'Test Artist' },
+        { uri: 'spotify:artist:ar2', name: 'Guest' },
+      ],
       imageUrl: null,
       durationMs: 90_000,
       isLiked: true,

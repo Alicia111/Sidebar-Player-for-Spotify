@@ -1,6 +1,7 @@
 import { formatDuration } from '../shared/format.ts';
-import type { NowPlayingView, PlayerCommand } from '../shared/protocol.ts';
+import type { NowPlayingTrackView, NowPlayingView, PlayerCommand } from '../shared/protocol.ts';
 import { LISTEN_ON_SPOTIFY_LABEL, toSpotifyWebUrl } from '../shared/spotifyLinks.ts';
+import { appendArtistCredits, type OpenArtist } from './artistLinks.ts';
 import { send } from './bridge.ts';
 import { coverImage, h, iconButton, setIcon, icon } from './dom.ts';
 
@@ -9,8 +10,11 @@ const PROGRESS_TICK_MS = 500;
 /** The now-playing card: cover, title, transport controls, progress and volume. */
 export class PlayerPanel {
   readonly element = h('section', { className: 'player' });
+  private readonly onOpenArtist: OpenArtist;
   private state: NowPlayingView | null = null;
   private isDraggingProgress = false;
+  /** Track and subtitle the artist line was built for. */
+  private renderedSubtitleKey: string | undefined;
   private progressTimer: ReturnType<typeof setInterval> | undefined;
 
   private readonly coverSlot = h('div', { className: 'cover-slot' });
@@ -39,7 +43,8 @@ export class PlayerPanel {
   });
   private readonly idleNotice = h('div', { className: 'idle-notice' });
 
-  constructor() {
+  constructor(options: { onOpenArtist: OpenArtist }) {
+    this.onOpenArtist = options.onOpenArtist;
     this.deviceLabel.addEventListener('click', () => send({ type: 'command', command: 'selectDevice' }));
     this.bindProgress();
     this.volume.addEventListener('change', () => send({ type: 'setVolume', percent: Number(this.volume.value) }));
@@ -92,7 +97,7 @@ export class PlayerPanel {
 
     this.title.textContent = track?.title ?? '';
     this.title.title = track?.title ?? '';
-    this.subtitle.textContent = track?.subtitle ?? '';
+    this.renderSubtitle(track);
     this.deviceLabel.textContent = state?.deviceName ? `On ${state.deviceName}` : 'No active device';
     this.deviceLabel.title = 'Switch playback device';
 
@@ -118,6 +123,20 @@ export class PlayerPanel {
       this.volume.value = String(state.volumePercent);
     }
     this.renderProgress();
+  }
+
+  /** Rebuilt only when the track changes: redoing it every poll would drop hover and focus from the links. */
+  private renderSubtitle(track: NowPlayingTrackView | null): void {
+    const key = track ? `${track.uri}|${track.subtitle}` : '';
+    if (key === this.renderedSubtitleKey) return;
+    this.renderedSubtitleKey = key;
+    this.subtitle.title = track?.subtitle ?? '';
+    if (track && track.artists.length > 0) {
+      this.subtitle.replaceChildren();
+      appendArtistCredits(this.subtitle, track.artists, this.onOpenArtist);
+    } else {
+      this.subtitle.textContent = track?.subtitle ?? '';
+    }
   }
 
   private renderProgress(): void {
