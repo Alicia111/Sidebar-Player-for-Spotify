@@ -7,12 +7,14 @@ import { LoginCancelledError } from './auth/loopbackServer.ts';
 import { launchSpotifyDesktop } from './device/desktopLauncher.ts';
 import { chooseDevice, isControllable, waitForDevice } from './device/deviceChoice.ts';
 import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
+import { getOrLoad } from './shared/promiseCache.ts';
 import type { PlayerState } from './state/playerState.ts';
 
 const NEXT_REPEAT_MODE: Record<RepeatMode, RepeatMode> = { off: 'context', context: 'track', track: 'off' };
 // Spotify needs a moment after a transfer before the new device accepts commands.
 const DEVICE_WAKE_DELAY_MS = 600;
 const MAX_PLAYLISTS = 1000;
+const MY_PLAYLISTS_CACHE_KEY = 'mine';
 const LAST_DEVICE_KEY = 'spotifySidebar.lastDeviceId';
 // The desktop app needs a few seconds after launch before it registers as a Connect device.
 const DESKTOP_STARTUP_TIMEOUT_MS = 30_000;
@@ -45,6 +47,8 @@ export class SpotifyActions implements vscode.Disposable {
   private readonly devicesChangedEmitter = new vscode.EventEmitter<void>();
   private readonly queueChangedEmitter = new vscode.EventEmitter<void>();
   private currentUserId: string | undefined;
+  /** Listing every playlist can take 20 requests; the tree and the "Add to playlist" picker share one copy. */
+  private readonly playlistCache = new Map<string, Promise<SimplifiedPlaylist[]>>();
 
   readonly onDidChangePlaylists = this.playlistsChangedEmitter.event;
   readonly onDidChangeLibrary = this.libraryChangedEmitter.event;
@@ -79,6 +83,7 @@ export class SpotifyActions implements vscode.Disposable {
   logout(): Promise<void> {
     return this.run('Log out', async () => {
       this.currentUserId = undefined;
+      this.playlistCache.clear();
       await this.auth.logout();
     });
   }
@@ -191,7 +196,7 @@ export class SpotifyActions implements vscode.Disposable {
   /** Flips the saved state of any track, looking it up first when unknown. */
   toggleLike(uri: string): Promise<void> {
     return this.run('Like', async () => {
-      const isLiked = (await this.api.libraryContains([uri])).get(uri) === true;
+      const isLiked = this.player.getLiked(uri) ?? (await this.api.libraryContains([uri])).get(uri) === true;
       await this.applyLike(uri, !isLiked);
       vscode.window.setStatusBarMessage(isLiked ? '$(heart) Removed from Liked Songs' : '$(heart-filled) Added to Liked Songs', 2500);
     });
@@ -209,7 +214,7 @@ export class SpotifyActions implements vscode.Disposable {
       if (!playlist) return;
       await this.api.addItemsToPlaylist(playlist.id, [uri]);
       vscode.window.setStatusBarMessage(`$(check) Added to ${playlist.name}`, 2500);
-      this.playlistsChangedEmitter.fire();
+      this.notifyPlaylistsChanged();
     });
   }
 
@@ -231,13 +236,20 @@ export class SpotifyActions implements vscode.Disposable {
       });
       if (!name) return;
       await this.api.createPlaylist(name.trim(), 'Created from VS Code');
-      this.playlistsChangedEmitter.fire();
+      this.notifyPlaylistsChanged();
     });
   }
 
-  async fetchMyPlaylists(): Promise<SimplifiedPlaylist[]> {
-    const { items } = await collectPages((page) => this.api.getMyPlaylists(page), MAX_PLAYLISTS);
-    return items;
+  fetchMyPlaylists(): Promise<SimplifiedPlaylist[]> {
+    return getOrLoad(this.playlistCache, MY_PLAYLISTS_CACHE_KEY, async () => {
+      const { items } = await collectPages((page) => this.api.getMyPlaylists(page), MAX_PLAYLISTS);
+      return items;
+    });
+  }
+
+  /** Drops the cached playlist list, e.g. on a manual refresh, so the next read asks Spotify again. */
+  invalidatePlaylists(): void {
+    this.playlistCache.clear();
   }
 
   async getCurrentUserId(): Promise<string> {
@@ -264,6 +276,11 @@ export class SpotifyActions implements vscode.Disposable {
     this.libraryChangedEmitter.dispose();
     this.devicesChangedEmitter.dispose();
     this.queueChangedEmitter.dispose();
+  }
+
+  private notifyPlaylistsChanged(): void {
+    this.invalidatePlaylists();
+    this.playlistsChangedEmitter.fire();
   }
 
   private async applyLike(uri: string, isLiked: boolean): Promise<void> {

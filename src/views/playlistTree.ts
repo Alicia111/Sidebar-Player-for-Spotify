@@ -5,6 +5,7 @@ import { collectPages, type SpotifyApi } from '../api/endpoints.ts';
 import { SpotifyApiError } from '../api/spotifyClient.ts';
 import type { PlayableItem, SimplifiedPlaylist } from '../api/types.ts';
 import { formatDuration } from '../shared/format.ts';
+import { getOrLoad } from '../shared/promiseCache.ts';
 import { joinArtistNames } from '../state/viewModels.ts';
 
 // Bounds memory and request count for very large playlists.
@@ -29,7 +30,8 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
   private readonly actions: SpotifyActions;
   private readonly changeEmitter = new vscode.EventEmitter<PlaylistTreeNode | undefined>();
   private readonly disposables: vscode.Disposable[] = [];
-  private readonly childrenCache = new Map<string, PlaylistTreeNode[]>();
+  /** Holds in-flight loads too, so expanding a node while "Play" reads it fetches the list once. */
+  private readonly childrenCache = new Map<string, Promise<PlaylistTreeNode[]>>();
   private readonly likedSongsNode: PlaylistTreeNode = { kind: 'liked' };
 
   readonly onDidChangeTreeData = this.changeEmitter.event;
@@ -44,6 +46,7 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
   }
 
   refresh(): void {
+    this.actions.invalidatePlaylists();
     this.childrenCache.clear();
     this.changeEmitter.fire(undefined);
   }
@@ -81,8 +84,10 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
   async getChildren(node?: PlaylistTreeNode): Promise<PlaylistTreeNode[]> {
     try {
       if (!node) return await this.loadRoot();
-      if (node.kind === 'liked') return await this.cached(LIKED_SONGS_ID, () => this.loadLikedSongs());
-      if (node.kind === 'playlist') return await this.cached(node.playlist.id, () => this.loadPlaylistTracks(node.playlist));
+      if (node.kind === 'liked') return await getOrLoad(this.childrenCache, LIKED_SONGS_ID, () => this.loadLikedSongs());
+      if (node.kind === 'playlist') {
+        return await getOrLoad(this.childrenCache, node.playlist.id, () => this.loadPlaylistTracks(node.playlist));
+      }
       return [];
     } catch (error) {
       return [toMessageNode(error)];
@@ -110,14 +115,6 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
 
   private refreshLikedSongs(): void {
     if (this.childrenCache.delete(LIKED_SONGS_ID)) this.changeEmitter.fire(this.likedSongsNode);
-  }
-
-  private async cached(key: string, load: () => Promise<PlaylistTreeNode[]>): Promise<PlaylistTreeNode[]> {
-    const hit = this.childrenCache.get(key);
-    if (hit) return hit;
-    const nodes = await load();
-    this.childrenCache.set(key, nodes);
-    return nodes;
   }
 
   private async loadRoot(): Promise<PlaylistTreeNode[]> {
