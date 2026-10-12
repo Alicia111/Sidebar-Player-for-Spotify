@@ -1,0 +1,400 @@
+{
+  "name": "spotify-vscode",
+  "displayName": "Spotify Sidebar",
+  "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes.",
+  "version": "0.1.0",
+  "publisher": "nekolia",
+  "license": "MIT",
+  "private": true,
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "spotify",
+    "music",
+    "player"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "spotifySidebar",
+          "title": "Spotify",
+          "icon": "media/activitybar.svg"
+        }
+      ]
+    },
+    "views": {
+      "spotifySidebar": [
+        {
+          "type": "webview",
+          "id": "spotifySidebar.nowPlaying",
+          "name": "Now Playing"
+        },
+        {
+          "id": "spotifySidebar.queue",
+          "name": "Queue"
+        },
+        {
+          "id": "spotifySidebar.playlists",
+          "name": "Playlists"
+        },
+        {
+          "id": "spotifySidebar.devices",
+          "name": "Devices",
+          "visibility": "collapsed"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "spotifySidebar.playlists",
+        "contents": "Log in to see your playlists and Liked Songs.\n[Log in to Spotify](command:spotifySidebar.login)",
+        "when": "!spotifySidebar.loggedIn"
+      },
+      {
+        "view": "spotifySidebar.devices",
+        "contents": "Log in to choose which device plays your music.\n[Log in to Spotify](command:spotifySidebar.login)",
+        "when": "!spotifySidebar.loggedIn"
+      },
+      {
+        "view": "spotifySidebar.queue",
+        "contents": "Log in to see what's playing next.\n[Log in to Spotify](command:spotifySidebar.login)",
+        "when": "!spotifySidebar.loggedIn"
+      }
+    ],
+    "commands": [
+      {
+        "command": "spotifySidebar.login",
+        "title": "Log In",
+        "category": "Spotify",
+        "icon": "$(sign-in)"
+      },
+      {
+        "command": "spotifySidebar.logout",
+        "title": "Log Out",
+        "category": "Spotify",
+        "icon": "$(sign-out)"
+      },
+      {
+        "command": "spotifySidebar.playPause",
+        "title": "Play / Pause",
+        "category": "Spotify",
+        "icon": "$(debug-pause)"
+      },
+      {
+        "command": "spotifySidebar.next",
+        "title": "Next Track",
+        "category": "Spotify",
+        "icon": "$(chevron-right)"
+      },
+      {
+        "command": "spotifySidebar.previous",
+        "title": "Previous Track",
+        "category": "Spotify",
+        "icon": "$(chevron-left)"
+      },
+      {
+        "command": "spotifySidebar.toggleShuffle",
+        "title": "Toggle Shuffle",
+        "category": "Spotify"
+      },
+      {
+        "command": "spotifySidebar.cycleRepeat",
+        "title": "Cycle Repeat Mode",
+        "category": "Spotify"
+      },
+      {
+        "command": "spotifySidebar.toggleLike",
+        "title": "Like / Unlike Current Track",
+        "category": "Spotify",
+        "icon": "$(heart)"
+      },
+      {
+        "command": "spotifySidebar.search",
+        "title": "Search",
+        "category": "Spotify",
+        "icon": "$(search)"
+      },
+      {
+        "command": "spotifySidebar.showLyrics",
+        "title": "Show Lyrics",
+        "category": "Spotify",
+        "icon": "$(quote)"
+      },
+      {
+        "command": "spotifySidebar.selectDevice",
+        "title": "Select Playback Device",
+        "category": "Spotify",
+        "icon": "$(device-mobile)"
+      },
+      {
+        "command": "spotifySidebar.addCurrentToPlaylist",
+        "title": "Add Current Track to Playlist",
+        "category": "Spotify"
+      },
+      {
+        "command": "spotifySidebar.createPlaylist",
+        "title": "Create Playlist",
+        "category": "Spotify",
+        "icon": "$(add)"
+      },
+      {
+        "command": "spotifySidebar.refreshPlaylists",
+        "title": "Refresh Playlists",
+        "category": "Spotify",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "spotifySidebar.refreshDevices",
+        "title": "Refresh Devices",
+        "category": "Spotify",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "spotifySidebar.playItem",
+        "title": "Play",
+        "category": "Spotify",
+        "icon": "$(play)"
+      },
+      {
+        "command": "spotifySidebar.queueItem",
+        "title": "Add to Queue",
+        "category": "Spotify",
+        "icon": "$(list-ordered)"
+      },
+      {
+        "command": "spotifySidebar.toggleLikeItem",
+        "title": "Like / Unlike",
+        "category": "Spotify",
+        "icon": "$(heart)"
+      },
+      {
+        "command": "spotifySidebar.addItemToPlaylist",
+        "title": "Add to Playlist…",
+        "category": "Spotify",
+        "icon": "$(add)"
+      },
+      {
+        "command": "spotifySidebar.transferToDevice",
+        "title": "Play on This Device",
+        "category": "Spotify",
+        "icon": "$(play)"
+      },
+      {
+        "command": "spotifySidebar.refreshQueue",
+        "title": "Refresh Queue",
+        "category": "Spotify",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "spotifySidebar.playQueueItem",
+        "title": "Play Now",
+        "category": "Spotify",
+        "icon": "$(play)"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "spotifySidebar.playItem",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.queueItem",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.toggleLikeItem",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.addItemToPlaylist",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.transferToDevice",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.login",
+          "when": "!spotifySidebar.loggedIn"
+        },
+        {
+          "command": "spotifySidebar.logout",
+          "when": "spotifySidebar.loggedIn"
+        },
+        {
+          "command": "spotifySidebar.playQueueItem",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "spotifySidebar.showLyrics",
+          "when": "view == spotifySidebar.nowPlaying && spotifySidebar.loggedIn",
+          "group": "navigation@0"
+        },
+        {
+          "command": "spotifySidebar.search",
+          "when": "view == spotifySidebar.nowPlaying && spotifySidebar.loggedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spotifySidebar.selectDevice",
+          "when": "view == spotifySidebar.nowPlaying && spotifySidebar.loggedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "spotifySidebar.logout",
+          "when": "view == spotifySidebar.nowPlaying && spotifySidebar.loggedIn",
+          "group": "zz"
+        },
+        {
+          "command": "spotifySidebar.createPlaylist",
+          "when": "view == spotifySidebar.playlists && spotifySidebar.loggedIn",
+          "group": "navigation@1"
+        },
+        {
+          "command": "spotifySidebar.refreshPlaylists",
+          "when": "view == spotifySidebar.playlists && spotifySidebar.loggedIn",
+          "group": "navigation@2"
+        },
+        {
+          "command": "spotifySidebar.refreshDevices",
+          "when": "view == spotifySidebar.devices && spotifySidebar.loggedIn",
+          "group": "navigation"
+        },
+        {
+          "command": "spotifySidebar.refreshQueue",
+          "when": "view == spotifySidebar.queue && spotifySidebar.loggedIn",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "spotifySidebar.playItem",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked)$/",
+          "group": "inline@1"
+        },
+        {
+          "command": "spotifySidebar.playItem",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked)$/",
+          "group": "1_play@1"
+        },
+        {
+          "command": "spotifySidebar.queueItem",
+          "when": "view == spotifySidebar.playlists && viewItem == track",
+          "group": "1_play@2"
+        },
+        {
+          "command": "spotifySidebar.toggleLikeItem",
+          "when": "view == spotifySidebar.playlists && viewItem == track || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
+          "group": "2_library@1"
+        },
+        {
+          "command": "spotifySidebar.addItemToPlaylist",
+          "when": "view == spotifySidebar.playlists && viewItem == track || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
+          "group": "2_library@2"
+        },
+        {
+          "command": "spotifySidebar.transferToDevice",
+          "when": "view == spotifySidebar.devices && viewItem == device",
+          "group": "inline"
+        },
+        {
+          "command": "spotifySidebar.playQueueItem",
+          "when": "view == spotifySidebar.queue && viewItem == queueTrack",
+          "group": "inline"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "spotifySidebar.playPause",
+        "key": "ctrl+alt+p",
+        "when": "spotifySidebar.loggedIn"
+      },
+      {
+        "command": "spotifySidebar.next",
+        "key": "ctrl+alt+.",
+        "when": "spotifySidebar.loggedIn"
+      },
+      {
+        "command": "spotifySidebar.previous",
+        "key": "ctrl+alt+,",
+        "when": "spotifySidebar.loggedIn"
+      },
+      {
+        "command": "spotifySidebar.toggleLike",
+        "key": "ctrl+alt+l",
+        "when": "spotifySidebar.loggedIn"
+      }
+    ],
+    "configuration": {
+      "title": "Spotify Sidebar",
+      "properties": {
+        "spotifySidebar.clientId": {
+          "type": "string",
+          "default": "",
+          "scope": "application",
+          "markdownDescription": "Client ID of your own app from the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard). Its Redirect URI must be `http://127.0.0.1:<redirectPort>/callback`."
+        },
+        "spotifySidebar.redirectPort": {
+          "type": "integer",
+          "default": 8888,
+          "minimum": 1024,
+          "maximum": 65535,
+          "scope": "application",
+          "markdownDescription": "Local port for the login callback. Must match the Redirect URI registered in your Spotify app."
+        },
+        "spotifySidebar.pollIntervalMs": {
+          "type": "integer",
+          "default": 3000,
+          "minimum": 1000,
+          "markdownDescription": "How often (ms) to refresh playback state while the Now Playing view is visible. Slower polling while hidden, none while VS Code is unfocused."
+        },
+        "spotifySidebar.lyrics.enabled": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "Fetch lyrics from [LRCLIB](https://lrclib.net). When on, the title, artist, album and length of the playing song are sent to lrclib.net."
+        },
+        "spotifySidebar.autoLaunchDesktop": {
+          "type": "boolean",
+          "default": true,
+          "scope": "application",
+          "markdownDescription": "When no Spotify device is online, start the Spotify desktop app automatically and play there."
+        },
+        "spotifySidebar.desktopCommand": {
+          "type": "string",
+          "default": "spotify",
+          "scope": "application",
+          "markdownDescription": "Executable used to start the Spotify desktop app (no arguments, no shell), e.g. `spotify` or `/usr/bin/spotify`. User settings only, so a workspace cannot change what runs."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/**/*.test.ts\"",
+    "package": "npm run typecheck && npm test && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository",
+    "vscode:prepublish": "node esbuild.mjs --production"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

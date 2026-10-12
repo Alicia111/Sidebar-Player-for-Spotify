@@ -1,0 +1,365 @@
+:root {
+  --gap: 8px;
+  --radius: 4px;
+  --accent: var(--vscode-progressBar-background, var(--vscode-focusBorder));
+  --muted: var(--vscode-descriptionForeground);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 calc(var(--gap) * 1.5) var(--gap);
+  color: var(--vscode-foreground);
+  background: transparent;
+  font-family: var(--vscode-font-family);
+  font-size: var(--vscode-font-size);
+}
+
+[hidden] {
+  display: none !important;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ---- Buttons ---------------------------------------------------------- */
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--vscode-icon-foreground, var(--vscode-foreground));
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.icon-button:hover {
+  background: var(--vscode-toolbar-hoverBackground);
+}
+
+.icon-button:focus-visible,
+.result:focus-visible,
+.tab:focus-visible,
+.link-button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.icon-button.is-active {
+  color: var(--accent);
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.play-button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.play-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.play-button .icon {
+  width: 22px;
+  height: 22px;
+}
+
+.primary-button {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 2px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.link-button {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  text-align: left;
+}
+
+.link-button:hover {
+  text-decoration: underline;
+}
+
+/* ---- Login ------------------------------------------------------------ */
+
+.login {
+  padding-top: var(--gap);
+}
+
+.login .hint,
+.idle-notice p {
+  color: var(--muted);
+}
+
+/* ---- Player ----------------------------------------------------------- */
+
+.player {
+  padding: var(--gap) 0;
+  border-bottom: 1px solid var(--vscode-sideBarSectionHeader-border, var(--vscode-widget-border, transparent));
+}
+
+.player.is-idle > :not(.idle-notice) {
+  display: none;
+}
+
+.now-playing {
+  display: flex;
+  gap: var(--gap);
+  align-items: center;
+}
+
+.cover {
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cover-placeholder,
+.thumb.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vscode-input-background);
+  color: var(--muted);
+}
+
+.track-meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.track-title,
+.track-subtitle,
+.device-label,
+.result-title,
+.result-subtitle {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.track-title {
+  font-weight: 600;
+}
+
+.track-subtitle,
+.result-subtitle {
+  color: var(--muted);
+}
+
+.device-label {
+  font-size: 0.9em;
+}
+
+.progress-row,
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  margin-top: var(--gap);
+}
+
+.volume-row .icon {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.time {
+  min-width: 3.2em;
+  color: var(--muted);
+  font-size: 0.85em;
+  font-variant-numeric: tabular-nums;
+}
+
+.time:last-child {
+  text-align: right;
+}
+
+.slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: calc(var(--gap) / 2);
+  margin-top: calc(var(--gap) / 2);
+}
+
+/* ---- Search ----------------------------------------------------------- */
+
+.search {
+  padding-top: var(--gap);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 6px;
+  border: 1px solid var(--vscode-input-border, transparent);
+  border-radius: 2px;
+  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground);
+}
+
+.search-box:focus-within {
+  border-color: var(--vscode-focusBorder);
+}
+
+.search-box .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.search-input::placeholder {
+  color: var(--vscode-input-placeholderForeground);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: var(--gap) 0 4px;
+}
+
+.tab {
+  padding: 2px 8px;
+  border: 1px solid var(--vscode-button-secondaryBackground, transparent);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.9em;
+}
+
+.tab.is-selected {
+  background: var(--vscode-button-secondaryBackground);
+  color: var(--vscode-button-secondaryForeground);
+}
+
+.search-status {
+  margin: 4px 0;
+  color: var(--muted);
+}
+
+.search-status:empty {
+  display: none;
+}
+
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: var(--gap);
+  padding: 4px;
+  border-radius: var(--radius);
+  cursor: default;
+}
+
+.result:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.kind-artist .thumb {
+  border-radius: 50%;
+}
+
+.result-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-actions {
+  display: flex;
+}
+
+/* Actions appear on hover/focus; a filled heart stays visible so liked tracks stand out. */
+.result-actions .icon-button {
+  width: 24px;
+  height: 24px;
+  visibility: hidden;
+}
+
+.result:hover .result-actions .icon-button,
+.result:focus-within .result-actions .icon-button,
+.result-actions .icon-button.is-active {
+  visibility: visible;
+}
+
+.result-actions .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.load-more {
+  margin: var(--gap) 4px;
+}
+
+@media (hover: none) {
+  .result-actions .icon-button {
+    visibility: visible;
+  }
+}

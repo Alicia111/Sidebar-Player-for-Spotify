@@ -1,0 +1,141 @@
+:root {
+  --accent: var(--vscode-progressBar-background, var(--vscode-focusBorder));
+  --muted: var(--vscode-descriptionForeground);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0 24px 40vh;
+  color: var(--vscode-foreground);
+  background: var(--vscode-editor-background);
+  font-family: var(--vscode-font-family);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 0 16px;
+  background: var(--vscode-editor-background);
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+
+.cover {
+  width: 72px;
+  height: 72px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.cover-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--vscode-input-background);
+  color: var(--muted);
+}
+
+.icon {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+
+.heading {
+  min-width: 0;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 1.4em;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.subtitle {
+  color: var(--muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.lyrics {
+  max-width: 720px;
+  padding-top: 24px;
+  font-size: 1.35em;
+  line-height: 1.6;
+}
+
+.line {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+
+.lyrics.is-synced .line {
+  color: var(--muted);
+  cursor: pointer;
+  transition: color 0.2s ease, opacity 0.2s ease;
+}
+
+.lyrics.is-synced .line.is-past {
+  opacity: 0.6;
+}
+
+.lyrics.is-synced .line:hover {
+  background: var(--vscode-list-hoverBackground);
+}
+
+.lyrics.is-synced .line.is-active {
+  color: var(--vscode-foreground);
+  font-weight: 600;
+  opacity: 1;
+}
+
+.line:focus-visible,
+.primary-button:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder);
+  outline-offset: 1px;
+}
+
+.notice {
+  color: var(--muted);
+  font-size: 0.85em;
+}
+
+.primary-button {
+  padding: 4px 12px;
+  border: none;
+  border-radius: 2px;
+  background: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  font: inherit;
+  font-size: 0.75em;
+  cursor: pointer;
+}
+
+.primary-button:hover {
+  background: var(--vscode-button-hoverBackground);
+}
+
+.credit {
+  margin-top: 32px;
+  color: var(--muted);
+  font-size: 0.8em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lyrics.is-synced .line {
+    transition: none;
+  }
+}
