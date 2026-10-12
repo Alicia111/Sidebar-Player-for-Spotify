@@ -4,9 +4,13 @@ import type { SpotifyApi } from '../api/endpoints.ts';
 import type { PlayableItem } from '../api/types.ts';
 import { formatDuration } from '../shared/format.ts';
 import type { PlayerState } from '../state/playerState.ts';
+import { fetchSettledQueue } from '../state/queueSync.ts';
 import { joinArtistNames } from '../state/viewModels.ts';
 
 export const QUEUE_VIEW_ID = 'spotifySidebar.queue';
+// Spotify's queue endpoint can trail a track change by a second or two.
+const QUEUE_SETTLE_RETRIES = 3;
+const QUEUE_SETTLE_DELAY_MS = 700;
 
 const CONTEXT_ICONS: Record<string, string> = {
   playlist: 'list-unordered',
@@ -93,25 +97,39 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueTreeNode>
   }
 
   private onPlayerChange(): void {
-    const playback = this.player.current;
-    const key = `${playback?.item?.uri ?? ''}|${playback?.context?.uri ?? ''}`;
-    if (key === this.renderedKey) return;
+    if (this.playbackKey() === this.renderedKey) return;
     // Hidden views don't need fresh data; fetch once they are shown again.
     if (this.treeView?.visible) this.refresh();
     else this.isStale = true;
   }
 
+  /** Same key on both sides of the comparison: what the playback endpoint says is playing, and from where. */
+  private playbackKey(): string {
+    const playback = this.player.current;
+    return `${playback?.item?.uri ?? ''}|${playback?.context?.uri ?? ''}`;
+  }
+
   private async loadQueue(): Promise<QueueTreeNode[]> {
     const context = this.player.current?.context ?? null;
-    const [queue, contextNode] = await Promise.all([this.api.getQueue(), this.loadContextNode(context?.uri)]);
-    this.renderedKey = `${queue.currently_playing?.uri ?? ''}|${context?.uri ?? ''}`;
+    const [{ queue, isSettled }, contextNode] = await Promise.all([
+      fetchSettledQueue({
+        fetchQueue: () => this.api.getQueue(),
+        getPlayingUri: () => this.player.current?.item?.uri,
+        retries: QUEUE_SETTLE_RETRIES,
+        delayMs: QUEUE_SETTLE_DELAY_MS,
+      }),
+      this.loadContextNode(context?.uri),
+    ]);
+    // A lagging answer is shown but not remembered, so the next poll fetches the queue again.
+    this.renderedKey = isSettled ? this.playbackKey() : undefined;
 
-    if (!queue.currently_playing && queue.queue.length === 0) {
+    const current = queue.currently_playing ?? this.player.current?.item ?? null;
+    if (!current && queue.queue.length === 0) {
       return [{ kind: 'message', text: 'Nothing is playing right now.' }];
     }
     const nodes: QueueTreeNode[] = contextNode ? [contextNode] : [];
-    if (queue.currently_playing) {
-      nodes.push({ kind: 'track', item: queue.currently_playing, role: 'current', position: 0, contextUri: context?.uri });
+    if (current) {
+      nodes.push({ kind: 'track', item: current, role: 'current', position: 0, contextUri: context?.uri });
     }
     queue.queue.forEach((item, index) => {
       nodes.push({ kind: 'track', item, role: 'upcoming', position: index + 1, contextUri: context?.uri });
