@@ -375,15 +375,15 @@
         },
         "spotifySidebar.desktopCommand": {
           "type": "string",
-          "default": "spotify",
+          "default": "",
           "scope": "application",
-          "markdownDescription": "Executable used to start the Spotify desktop app (no arguments, no shell), e.g. `spotify` or `/usr/bin/spotify`. User settings only, so a workspace cannot change what runs."
+          "markdownDescription": "Executable used to start the Spotify desktop app (no arguments, no shell). Leave empty to find it automatically: `PATH`, Snap and Flatpak on Linux, `/Applications` on macOS, the spotify.com installer and Microsoft Store app on Windows. User settings only, so a workspace cannot change what runs."
         },
         "spotifySidebar.minimizeDesktop": {
           "type": "boolean",
           "default": true,
           "scope": "application",
-          "markdownDescription": "Minimize the Spotify desktop app when this extension starts it. On Linux this needs X11 or XWayland and `python3` (no extra packages)."
+          "markdownDescription": "Minimize the Spotify desktop app when this extension starts it. On Linux this needs X11 or XWayland and `python3` (no extra packages); on macOS the app opens in the background instead."
         }
       }
     }

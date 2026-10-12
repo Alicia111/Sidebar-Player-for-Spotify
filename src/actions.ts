@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import * as vscode from 'vscode';
 import { collectPages, type PlayRequest, type SpotifyApi } from './api/endpoints.ts';
@@ -5,7 +6,8 @@ import { SpotifyApiError } from './api/spotifyClient.ts';
 import type { Device, PlayableItem, RepeatMode, SimplifiedPlaylist } from './api/types.ts';
 import { NotLoggedInError, type AuthManager } from './auth/authManager.ts';
 import { LoginCancelledError } from './auth/loopbackServer.ts';
-import { launchSpotifyDesktop } from './device/desktopLauncher.ts';
+import { launchFirstAvailable } from './device/desktopLauncher.ts';
+import { customLaunchCandidate, listLaunchCandidates, type LaunchCandidate } from './device/desktopLocator.ts';
 import { chooseDevice, isControllable, waitForDevice } from './device/deviceChoice.ts';
 import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
 import { getOrLoad } from './shared/promiseCache.ts';
@@ -336,11 +338,12 @@ export class SpotifyActions implements vscode.Disposable {
       return undefined;
     }
 
-    const command = config.get<string>('desktopCommand', 'spotify');
     const shouldMinimize = config.get<boolean>('minimizeDesktop', true);
-    this.log.info(`No Spotify devices online; launching "${command}"${shouldMinimize ? ' minimized' : ''}.`);
-    // Spotify honours --minimized only on Windows; Linux gets the window iconified after it appears.
-    await launchSpotifyDesktop(command, shouldMinimize && process.platform === 'win32' ? ['--minimized'] : []);
+    const candidates = desktopLaunchCandidates(config.get<string>('desktopCommand', '').trim(), shouldMinimize);
+    this.log.info(`No Spotify devices online; starting the desktop app${shouldMinimize ? ' minimized' : ''}.`);
+    const launched = await launchFirstAvailable(candidates);
+    this.log.info(`Started Spotify with: ${launched.command} ${launched.args.join(' ')}`.trimEnd());
+    // Windows and macOS get launch flags instead; Linux gets the window iconified after it appears.
     if (shouldMinimize && process.platform === 'linux') void this.minimizeLaunchedWindow();
     const device = await vscode.window.withProgress(
       { location: vscode.ProgressLocation.Notification, title: 'Starting Spotify…', cancellable: true },
@@ -444,6 +447,12 @@ export class SpotifyActions implements vscode.Disposable {
     }
     vscode.window.showErrorMessage(`Spotify: ${label} failed. ${describeError(error)}`);
   }
+}
+
+/** An explicit `desktopCommand` is used as-is; left empty, the usual install locations are searched. */
+function desktopLaunchCandidates(configuredCommand: string, shouldMinimize: boolean): LaunchCandidate[] {
+  if (configuredCommand) return [customLaunchCandidate(configuredCommand, process.platform, shouldMinimize)];
+  return listLaunchCandidates({ platform: process.platform, env: process.env, homeDir: homedir() }, shouldMinimize);
 }
 
 export function describeError(error: unknown): string {

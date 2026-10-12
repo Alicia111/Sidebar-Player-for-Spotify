@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { Device } from '../src/api/types.ts';
-import { DesktopLaunchError, launchSpotifyDesktop } from '../src/device/desktopLauncher.ts';
+import { DesktopLaunchError, launchFirstAvailable, launchSpotifyDesktop } from '../src/device/desktopLauncher.ts';
+import { customLaunchCandidate, listLaunchCandidates, type LaunchCandidate } from '../src/device/desktopLocator.ts';
 import { chooseDevice, waitForDevice } from '../src/device/deviceChoice.ts';
 
 function device(overrides: Partial<Device> & { id: string | null; name: string }): Device {
@@ -85,6 +86,7 @@ describe('launchSpotifyDesktop', () => {
     await assert.rejects(launchSpotifyDesktop('/nonexistent/spotify-binary'), (error: unknown) => {
       assert.ok(error instanceof DesktopLaunchError);
       assert.match(error.message, /spotifySidebar\.desktopCommand/);
+      assert.equal(error.isNotFound, true);
       return true;
     });
   });
@@ -92,5 +94,102 @@ describe('launchSpotifyDesktop', () => {
   it('does not interpret shell syntax in the command', async () => {
     // With a shell this would run `true`; without one it is just a missing file name.
     await assert.rejects(launchSpotifyDesktop('true; echo injected'), DesktopLaunchError);
+  });
+});
+
+describe('listLaunchCandidates', () => {
+  it('searches PATH, Snap and both Flatpak scopes on Linux', () => {
+    const commands = listLaunchCandidates({ platform: 'linux', env: {}, homeDir: '/home/neko' }, true).map((candidate) => candidate.command);
+    assert.deepEqual(commands, [
+      'spotify',
+      '/snap/bin/spotify',
+      '/var/lib/flatpak/exports/bin/com.spotify.Client',
+      '/home/neko/.local/share/flatpak/exports/bin/com.spotify.Client',
+    ]);
+  });
+
+  it('opens the app bundle through `open` on macOS, in the background when minimizing', () => {
+    const candidates = listLaunchCandidates({ platform: 'darwin', env: {}, homeDir: '/Users/neko' }, true);
+    assert.deepEqual(candidates, [
+      { command: '/usr/bin/open', args: ['-g', '/Applications/Spotify.app'], requiredPath: '/Applications/Spotify.app' },
+      { command: '/usr/bin/open', args: ['-g', '/Users/neko/Applications/Spotify.app'], requiredPath: '/Users/neko/Applications/Spotify.app' },
+    ]);
+  });
+
+  it('tries the installer, then the Store alias, then PATH on Windows', () => {
+    const env = { APPDATA: 'C:\\Users\\neko\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\neko\\AppData\\Local' };
+    const candidates = listLaunchCandidates({ platform: 'win32', env, homeDir: 'C:\\Users\\neko' }, true);
+    assert.deepEqual(candidates, [
+      { command: 'C:\\Users\\neko\\AppData\\Roaming\\Spotify\\Spotify.exe', args: ['--minimized'] },
+      { command: 'C:\\Users\\neko\\AppData\\Local\\Microsoft\\WindowsApps\\Spotify.exe', args: ['--minimized'] },
+      { command: 'spotify', args: ['--minimized'] },
+    ]);
+  });
+
+  it('skips Windows locations whose environment variables are missing', () => {
+    const candidates = listLaunchCandidates({ platform: 'win32', env: {}, homeDir: 'C:\\Users\\neko' }, false);
+    assert.deepEqual(candidates, [{ command: 'spotify', args: [] }]);
+  });
+});
+
+describe('customLaunchCandidate', () => {
+  it('adds --minimized only on Windows', () => {
+    assert.deepEqual(customLaunchCandidate('C:\\Spotify.exe', 'win32', true), { command: 'C:\\Spotify.exe', args: ['--minimized'] });
+    assert.deepEqual(customLaunchCandidate('/opt/spotify/spotify', 'linux', true), { command: '/opt/spotify/spotify', args: [] });
+  });
+});
+
+describe('launchFirstAvailable', () => {
+  const notFound = (command: string) => new DesktopLaunchError(`${command} is missing`, true);
+
+  it('moves past missing executables and returns the one that started', async () => {
+    const attempts: string[] = [];
+    const candidates: LaunchCandidate[] = [{ command: 'spotify', args: [] }, { command: '/snap/bin/spotify', args: [] }];
+    const launched = await launchFirstAvailable(candidates, {
+      launch: async (command) => {
+        attempts.push(command);
+        if (command === 'spotify') throw notFound(command);
+      },
+    });
+    assert.deepEqual(attempts, ['spotify', '/snap/bin/spotify']);
+    assert.equal(launched.command, '/snap/bin/spotify');
+  });
+
+  it('skips candidates whose required bundle does not exist', async () => {
+    const attempts: string[] = [];
+    const candidates: LaunchCandidate[] = [
+      { command: 'open', args: ['/Applications/Spotify.app'], requiredPath: '/Applications/Spotify.app' },
+      { command: 'open', args: ['/Users/neko/Applications/Spotify.app'], requiredPath: '/Users/neko/Applications/Spotify.app' },
+    ];
+    await launchFirstAvailable(candidates, {
+      fileExists: (filePath) => filePath.startsWith('/Users/'),
+      launch: async (_command, args) => void attempts.push(args[0]),
+    });
+    assert.deepEqual(attempts, ['/Users/neko/Applications/Spotify.app']);
+  });
+
+  it('stops at a failure other than a missing executable', async () => {
+    const candidates: LaunchCandidate[] = [{ command: 'spotify', args: [] }, { command: '/snap/bin/spotify', args: [] }];
+    const permissionDenied = new DesktopLaunchError('EACCES', false);
+    await assert.rejects(
+      launchFirstAvailable(candidates, { launch: () => Promise.reject(permissionDenied) }),
+      (error: unknown) => error === permissionDenied,
+    );
+  });
+
+  it('lists every place it looked when nothing is installed', async () => {
+    const candidates: LaunchCandidate[] = [
+      { command: 'spotify', args: [] },
+      { command: 'open', args: ['/Applications/Spotify.app'], requiredPath: '/Applications/Spotify.app' },
+    ];
+    await assert.rejects(
+      launchFirstAvailable(candidates, { fileExists: () => false, launch: (command) => Promise.reject(notFound(command)) }),
+      (error: unknown) => {
+        assert.ok(error instanceof DesktopLaunchError);
+        assert.match(error.message, /looked for: spotify, \/Applications\/Spotify\.app/);
+        assert.match(error.message, /spotifySidebar\.desktopCommand/);
+        return true;
+      },
+    );
   });
 });

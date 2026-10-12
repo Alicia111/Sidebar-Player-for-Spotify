@@ -12,7 +12,7 @@ Control Spotify without leaving the editor:
 
 > **Audio does not play inside VS Code.** VS Code webviews lack the DRM module Spotify requires, so this extension is a remote control for a Spotify app you already have open (desktop, web player at open.spotify.com, phone, speaker…).
 >
-> If nothing is online when you press play, the extension picks a device for you: the active one, else the one you used last, else the only one available. With no device at all it starts the Spotify desktop app (`spotifySidebar.desktopCommand`) and plays there once it is ready.
+> If nothing is online when you press play, the extension picks a device for you: the active one, else the one you used last, else the only one available. With no device at all it finds and starts the Spotify desktop app (or runs `spotifySidebar.desktopCommand` if you set one) and plays there once it is ready.
 
 ## Requirements
 
@@ -56,8 +56,8 @@ Some desktops already use `Ctrl+Alt+L` to lock the screen. Rebind it under **Key
 | `spotifySidebar.redirectPort` | `8888` | Login callback port. It must match the Redirect URI you registered. |
 | `spotifySidebar.lyrics.enabled` | `true` | Fetch lyrics from lrclib.net. The playing song's title, artist, album and length are sent there. |
 | `spotifySidebar.autoLaunchDesktop` | `true` | Start the Spotify desktop app when no device is online |
-| `spotifySidebar.minimizeDesktop` | `true` | Minimize the desktop app when the extension starts it (Linux: X11/XWayland + `python3`, no extra packages; Windows: `--minimized`) |
-| `spotifySidebar.desktopCommand` | `spotify` | Executable to start (run directly, no shell; user settings only) |
+| `spotifySidebar.minimizeDesktop` | `true` | Minimize the desktop app when the extension starts it (Linux: X11/XWayland + `python3`, no extra packages; Windows: `--minimized`; macOS: opens in the background) |
+| `spotifySidebar.desktopCommand` | *(empty)* | Executable to start (run directly, no shell; user settings only). Empty means auto-detect: `PATH`, Snap and Flatpak on Linux, `/Applications` and `~/Applications` on macOS, the spotify.com installer and Microsoft Store app on Windows |
 | `spotifySidebar.pollIntervalMs` | `3000` | Playback refresh interval while Now Playing is visible. The status bar alone polls 5× slower, and nothing polls while VS Code is unfocused. |
 
 ## Known limitations (Spotify API rules)
