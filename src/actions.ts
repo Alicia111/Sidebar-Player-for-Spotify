@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import * as vscode from 'vscode';
 import { collectPages, type PlayRequest, type SpotifyApi } from './api/endpoints.ts';
 import { SpotifyApiError } from './api/spotifyClient.ts';
@@ -401,7 +402,7 @@ export class SpotifyActions implements vscode.Disposable {
     if (!device.id) throw new Error(`Device "${device.name}" has no id and cannot be controlled`);
     await this.api.transferPlayback(device.id, this.player.current?.is_playing ?? false);
     await this.memento.update(LAST_DEVICE_KEY, device.id);
-    await new Promise((resolve) => setTimeout(resolve, DEVICE_WAKE_DELAY_MS));
+    await delay(DEVICE_WAKE_DELAY_MS);
     this.devicesChangedEmitter.fire();
     this.player.refreshSoon();
   }

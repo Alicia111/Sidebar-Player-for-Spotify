@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import type { PlaybackQueue } from '../api/types.ts';
 
 /**
@@ -19,7 +20,7 @@ export interface SettledQueueOptions {
 
 /** Fetches the queue, retrying briefly while it lags behind playback. */
 export async function fetchSettledQueue(options: SettledQueueOptions): Promise<{ queue: PlaybackQueue; isSettled: boolean }> {
-  const sleep = options.sleep ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  const sleep = options.sleep ?? ((milliseconds: number) => delay(milliseconds));
   for (let attempt = 0; ; attempt++) {
     const queue = await options.fetchQueue();
     const isSettled = !isQueueLagging(queue, options.getPlayingUri());

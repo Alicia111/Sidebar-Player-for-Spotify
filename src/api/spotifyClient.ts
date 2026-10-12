@@ -1,3 +1,5 @@
+import { setTimeout as delay } from 'node:timers/promises';
+
 const API_BASE_URL = 'https://api.spotify.com/v1';
 const DEFAULT_MAX_RATE_LIMIT_RETRIES = 2;
 const DEFAULT_RETRY_AFTER_SECONDS = 1;
@@ -59,7 +61,7 @@ export class SpotifyClient {
   constructor(options: SpotifyClientOptions) {
     this.tokens = options.tokens;
     this.fetchFn = options.fetchFn ?? fetch;
-    this.sleep = options.sleep ?? ((milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
+    this.sleep = options.sleep ?? ((milliseconds) => delay(milliseconds));
     this.maxRateLimitRetries = options.maxRateLimitRetries ?? DEFAULT_MAX_RATE_LIMIT_RETRIES;
   }
 

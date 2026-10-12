@@ -1,3 +1,4 @@
+import { setTimeout as delay } from 'node:timers/promises';
 import type { Device } from '../api/types.ts';
 
 export type DeviceChoice =
@@ -38,7 +39,7 @@ export interface WaitForDeviceOptions {
 
 /** Polls until a controllable device shows up, preferring a computer (the app we just launched). */
 export async function waitForDevice(options: WaitForDeviceOptions): Promise<Device | undefined> {
-  const sleep = options.sleep ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
+  const sleep = options.sleep ?? ((milliseconds: number) => delay(milliseconds));
   const attempts = Math.max(1, Math.ceil(options.timeoutMs / options.intervalMs));
 
   for (let attempt = 0; attempt < attempts; attempt++) {
