@@ -9,6 +9,8 @@ const LOGGED_IN_CONTEXT_KEY = 'spotifySidebar.loggedIn';
 const LOGIN_TIMEOUT_MS = 2 * 60 * 1000;
 // Refresh slightly early so a token never expires mid-request.
 const TOKEN_EXPIRY_MARGIN_MS = 60 * 1000;
+// Must match the `spotifySidebar.redirectPort` default in package.json.
+const DEFAULT_REDIRECT_PORT = 8888;
 const CLIENT_ID_PATTERN = /^[0-9a-f]{32}$/i;
 const DASHBOARD_URL = 'https://developer.spotify.com/dashboard';
 
@@ -64,7 +66,7 @@ export class AuthManager implements TokenProvider, vscode.Disposable {
     const clientId = await this.resolveClientId();
     if (!clientId) return false;
 
-    const port = vscode.workspace.getConfiguration('spotifySidebar').get<number>('redirectPort', 8888);
+    const port = vscode.workspace.getConfiguration('spotifySidebar').get<number>('redirectPort', DEFAULT_REDIRECT_PORT);
     const redirectUri = buildRedirectUri(port);
     const codeVerifier = createCodeVerifier();
     const state = createState();
@@ -155,7 +157,7 @@ export class AuthManager implements TokenProvider, vscode.Disposable {
     const configured = config.get<string>('clientId', '').trim();
     if (CLIENT_ID_PATTERN.test(configured)) return configured;
 
-    const port = config.get<number>('redirectPort', 8888);
+    const port = config.get<number>('redirectPort', DEFAULT_REDIRECT_PORT);
     const entered = await vscode.window.showInputBox({
       title: 'Spotify Client ID',
       prompt: `Create an app at ${DASHBOARD_URL} with Redirect URI ${buildRedirectUri(port)} and "Web API" enabled, then paste its Client ID.`,

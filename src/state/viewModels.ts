@@ -29,8 +29,9 @@ export function pickImageUrl(images: SpotifyImage[] | null | undefined): string 
   return chosen.url;
 }
 
-export function joinArtistNames(track: Track): string {
-  return track.artists.map((artist) => artist.name).join(', ');
+/** Works for anything with credited artists: tracks, simplified tracks and albums. */
+export function joinArtistNames(credited: { artists: readonly { name: string }[] }): string {
+  return credited.artists.map((artist) => artist.name).join(', ');
 }
 
 /** Local files and episodes can't be saved through the library endpoints we use. */
@@ -113,7 +114,7 @@ function toSearchItemView(
     case 'album': {
       const album = item as SimplifiedAlbum;
       const year = album.release_date?.slice(0, 4);
-      const artists = album.artists.map((artist) => artist.name).join(', ');
+      const artists = joinArtistNames(album);
       return { uri: album.uri, kind, title: album.name, subtitle: year ? `${artists} · ${year}` : artists, imageUrl: pickImageUrl(album.images) };
     }
     case 'artist': {
@@ -153,7 +154,7 @@ export function toAlbumTrackViews(tracks: SimplifiedTrack[], albumUri: string, l
     uri: track.uri,
     kind: 'track',
     title: track.name,
-    subtitle: track.artists.map((artist) => artist.name).join(', '),
+    subtitle: joinArtistNames(track),
     imageUrl: null,
     durationMs: track.duration_ms,
     isLiked: likedState.get(track.uri),
