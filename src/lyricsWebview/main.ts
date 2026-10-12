@@ -33,6 +33,7 @@ let lineElements: HTMLElement[] = [];
 let activeIndex = -1;
 let lastManualScrollAt = 0;
 let renderedImageUrl: string | null | undefined;
+let highlightTimer: ReturnType<typeof setInterval> | undefined;
 
 window.addEventListener('wheel', () => (lastManualScrollAt = Date.now()), { passive: true });
 window.addEventListener('touchmove', () => (lastManualScrollAt = Date.now()), { passive: true });
@@ -46,9 +47,9 @@ window.addEventListener('message', (event: MessageEvent<LyricsExtensionMessage>)
     playback = message.playback;
     updateHighlight();
   }
+  syncHighlightTimer();
 });
 
-setInterval(updateHighlight, HIGHLIGHT_TICK_MS);
 send({ type: 'ready' });
 
 function renderHeader(track: { title: string; subtitle: string; imageUrl: string | null } | null): void {
@@ -117,6 +118,17 @@ function renderSyncedLine(timeMs: number, text: string): HTMLElement {
     }
   });
   return line;
+}
+
+/** Only synced lyrics of a playing track move on their own; everything else needs no ticking. */
+function syncHighlightTimer(): void {
+  const shouldTick = playback?.isPlaying === true && syncedLines.length > 0;
+  if (shouldTick && highlightTimer === undefined) {
+    highlightTimer = setInterval(updateHighlight, HIGHLIGHT_TICK_MS);
+  } else if (!shouldTick && highlightTimer !== undefined) {
+    clearInterval(highlightTimer);
+    highlightTimer = undefined;
+  }
 }
 
 function updateHighlight(): void {

@@ -10,6 +10,7 @@ export class PlayerPanel {
   readonly element = h('section', { className: 'player' });
   private state: NowPlayingView | null = null;
   private isDraggingProgress = false;
+  private progressTimer: ReturnType<typeof setInterval> | undefined;
 
   private readonly coverSlot = h('div', { className: 'cover-slot' });
   private readonly title = h('div', { className: 'track-title' });
@@ -49,7 +50,6 @@ export class PlayerPanel {
       h('div', { className: 'controls' }, [this.shuffleButton, this.previousButton, this.playButton, this.nextButton, this.repeatButton, this.lyricsButton]),
       this.volumeRow,
     );
-    setInterval(() => this.renderProgress(), PROGRESS_TICK_MS);
     this.render();
   }
 
@@ -60,6 +60,18 @@ export class PlayerPanel {
       this.coverSlot.replaceChildren(coverImage(state?.track?.imageUrl ?? null, 'cover'));
     }
     this.render();
+    this.syncProgressTimer();
+  }
+
+  /** The position only moves while playing, so a paused player needs no ticking. */
+  private syncProgressTimer(): void {
+    const shouldTick = this.state?.isPlaying === true && this.state.track !== null;
+    if (shouldTick && this.progressTimer === undefined) {
+      this.progressTimer = setInterval(() => this.renderProgress(), PROGRESS_TICK_MS);
+    } else if (!shouldTick && this.progressTimer !== undefined) {
+      clearInterval(this.progressTimer);
+      this.progressTimer = undefined;
+    }
   }
 
   private render(): void {
