@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import { describeError, type SpotifyActions } from '../actions.ts';
 import { collectPages, type SpotifyApi } from '../api/endpoints.ts';
@@ -12,12 +11,11 @@ import {
 } from '../shared/protocol.ts';
 import type { PlayerState } from '../state/playerState.ts';
 import { toAlbumTrackViews, toAlbumView, toArtistHeaderView, toSearchResultsView } from '../state/viewModels.ts';
+import { renderWebviewHtml } from './webviewHtml.ts';
 
 export const NOW_PLAYING_VIEW_ID = 'spotifySidebar.nowPlaying';
 // Albums longer than this are rare; it bounds requests for box sets.
 const MAX_ALBUM_TRACKS = 200;
-// Spotify serves cover art from these CDNs.
-const IMAGE_SOURCES = 'https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com';
 
 export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscode.Disposable {
   private readonly extensionUri: vscode.Uri;
@@ -56,7 +54,13 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
     const distUri = vscode.Uri.joinPath(this.extensionUri, 'dist');
     const mediaUri = vscode.Uri.joinPath(this.extensionUri, 'media');
     view.webview.options = { enableScripts: true, localResourceRoots: [distUri, mediaUri] };
-    view.webview.html = this.renderHtml(view.webview, distUri, mediaUri);
+    view.webview.html = renderWebviewHtml({
+      webview: view.webview,
+      scriptUri: vscode.Uri.joinPath(distUri, 'webview.js'),
+      styleUri: vscode.Uri.joinPath(mediaUri, 'nowPlaying.css'),
+      title: 'Now Playing',
+      allowLocalImages: true,
+    });
 
     view.onDidChangeVisibility(() => this.player.setSurfaceVisible(NOW_PLAYING_VIEW_ID, view.visible), undefined, this.disposables);
     view.onDidDispose(() => {
@@ -215,33 +219,6 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
 
   private post(message: ExtensionMessage): void {
     void this.view?.webview.postMessage(message);
-  }
-
-  private renderHtml(webview: vscode.Webview, distUri: vscode.Uri, mediaUri: vscode.Uri): string {
-    const nonce = randomBytes(16).toString('base64');
-    const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(distUri, 'webview.js'));
-    const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'nowPlaying.css'));
-    const csp = [
-      "default-src 'none'",
-      `img-src ${IMAGE_SOURCES} ${webview.cspSource}`,
-      `style-src ${webview.cspSource}`,
-      `script-src 'nonce-${nonce}'`,
-    ].join('; ');
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="${csp}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="${styleUri}">
-  <title>Now Playing</title>
-</head>
-<body>
-  <main id="app"></main>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
   }
 }
 

@@ -1,14 +1,5 @@
 import { SEARCH_KINDS, type SearchKind, type WebviewMessage } from '../shared/protocol.ts';
-
-interface VsCodeApi {
-  postMessage(message: unknown): void;
-  getState(): unknown;
-  setState(state: unknown): void;
-}
-
-declare function acquireVsCodeApi(): VsCodeApi;
-
-const vscodeApi = acquireVsCodeApi();
+import { vscodeApi } from './vscodeApi.ts';
 
 export function send(message: WebviewMessage): void {
   vscodeApi.postMessage(message);

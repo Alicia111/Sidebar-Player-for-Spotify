@@ -1,13 +1,8 @@
 import { findActiveLineIndex } from '../lyrics/lrc.ts';
 import type { LyricsExtensionMessage, LyricsPlaybackView, LyricsView, LyricsWebviewMessage } from '../shared/lyricsProtocol.ts';
 import { coverImage, h } from '../webview/dom.ts';
+import { vscodeApi } from '../webview/vscodeApi.ts';
 
-interface VsCodeApi {
-  postMessage(message: unknown): void;
-}
-declare function acquireVsCodeApi(): VsCodeApi;
-
-const vscodeApi = acquireVsCodeApi();
 const HIGHLIGHT_TICK_MS = 200;
 // After the user scrolls by hand, leave the scroll position alone for a while.
 const MANUAL_SCROLL_GRACE_MS = 4000;

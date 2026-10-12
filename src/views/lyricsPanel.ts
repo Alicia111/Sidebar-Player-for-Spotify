@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
 import type { SpotifyActions } from '../actions.ts';
 import type { LyricsResult } from '../lyrics/lrclib.ts';
@@ -12,10 +11,10 @@ import {
   type LyricsWebviewMessage,
 } from '../shared/lyricsProtocol.ts';
 import type { PlayerState } from '../state/playerState.ts';
+import { renderWebviewHtml } from './webviewHtml.ts';
 
 export const LYRICS_PANEL_ID = 'spotifySidebar.lyrics';
 const LYRICS_ENABLED_SETTING = 'lyrics.enabled';
-const IMAGE_SOURCES = 'https://i.scdn.co https://*.scdn.co https://*.spotifycdn.com';
 
 /** Editor-area panel that follows the playing track and shows its lyrics from LRCLIB. */
 export class LyricsPanelController implements vscode.Disposable {
@@ -74,7 +73,13 @@ export class LyricsPanelController implements vscode.Disposable {
       { enableScripts: true, localResourceRoots: [distUri, mediaUri] },
     );
     panel.iconPath = vscode.Uri.joinPath(mediaUri, 'activitybar.svg');
-    panel.webview.html = renderHtml(panel.webview, distUri, mediaUri);
+    panel.webview.html = renderWebviewHtml({
+      webview: panel.webview,
+      scriptUri: vscode.Uri.joinPath(distUri, 'lyrics.js'),
+      styleUri: vscode.Uri.joinPath(mediaUri, 'lyrics.css'),
+      title: 'Lyrics',
+      allowLocalImages: false,
+    });
 
     const panelDisposables: vscode.Disposable[] = [
       panel.webview.onDidReceiveMessage((raw) => this.handleMessage(raw)),
@@ -188,31 +193,4 @@ function toLyricsView(result: LyricsResult): LyricsView {
     case 'notFound':
       return { status: 'notFound' };
   }
-}
-
-function renderHtml(webview: vscode.Webview, distUri: vscode.Uri, mediaUri: vscode.Uri): string {
-  const nonce = randomBytes(16).toString('base64');
-  const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(distUri, 'lyrics.js'));
-  const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(mediaUri, 'lyrics.css'));
-  const csp = [
-    "default-src 'none'",
-    `img-src ${IMAGE_SOURCES}`,
-    `style-src ${webview.cspSource}`,
-    `script-src 'nonce-${nonce}'`,
-  ].join('; ');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="${csp}">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="${styleUri}">
-  <title>Lyrics</title>
-</head>
-<body>
-  <main id="app"></main>
-  <script nonce="${nonce}" src="${scriptUri}"></script>
-</body>
-</html>`;
 }
