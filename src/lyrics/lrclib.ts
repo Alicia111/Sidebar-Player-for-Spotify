@@ -1,8 +1,11 @@
 import { parseLrc, type LyricLine } from './lrc.ts';
 
 const LRCLIB_BASE_URL = 'https://lrclib.net/api';
+// Injected by esbuild from package.json; absent when tests run the sources directly.
+declare const __EXTENSION_VERSION__: string | undefined;
+const EXTENSION_VERSION = typeof __EXTENSION_VERSION__ === 'string' ? __EXTENSION_VERSION__ : 'dev';
 // LRCLIB asks clients to identify themselves.
-const USER_AGENT = 'spotify-sidebar-vscode/0.1.0';
+const USER_AGENT = `spotify-sidebar-vscode/${EXTENSION_VERSION}`;
 const REQUEST_TIMEOUT_MS = 10_000;
 // Search fallback: accept a match only if its length is this close to the playing track.
 const MAX_DURATION_DIFFERENCE_SECONDS = 3;

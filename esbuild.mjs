@@ -1,4 +1,7 @@
+import { readFileSync } from 'node:fs';
 import * as esbuild from 'esbuild';
+
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 const isProduction = process.argv.includes('--production');
 const isWatch = process.argv.includes('--watch');
@@ -20,6 +23,7 @@ const buildTargets = [
     format: 'cjs',
     target: 'node20',
     external: ['vscode'],
+    define: { __EXTENSION_VERSION__: JSON.stringify(version) },
   },
   {
     ...sharedOptions,
