@@ -28,6 +28,24 @@ export function chooseDevice(devices: Device[], lastDeviceId: string | undefined
   return { kind: 'ask', devices: controllable };
 }
 
+/**
+ * Spotify names the desktop app's device after the computer, but the format differs from the hostname
+ * ("Alicia's MacBook Air" vs "Alicias-MacBook-Air.local"), so names are compared loosely.
+ */
+export function isThisComputer(device: Device, hostname: string): boolean {
+  return device.type.toLowerCase() === 'computer' && normalizeDeviceName(device.name) === normalizeDeviceName(hostname);
+}
+
+/** After launching the local app: this computer by name, or else a computer that was not online before the launch. */
+export function isLaunchedLocalDevice(device: Device, hostname: string, idsBeforeLaunch: ReadonlySet<string>): boolean {
+  if (isThisComputer(device, hostname)) return true;
+  return device.type.toLowerCase() === 'computer' && device.id !== null && !idsBeforeLaunch.has(device.id);
+}
+
+function normalizeDeviceName(name: string): string {
+  return name.toLowerCase().replace(/\.local$/, '').replace(/[^\p{L}\p{N}]/gu, '');
+}
+
 export interface WaitForDeviceOptions {
   fetchDevices: () => Promise<Device[]>;
   timeoutMs: number;
@@ -35,9 +53,11 @@ export interface WaitForDeviceOptions {
   sleep?: (milliseconds: number) => Promise<void>;
   /** Stops waiting early, e.g. when the user cancels the progress notification. */
   isCancelled?: () => boolean;
+  /** Only this device will do, e.g. the local app while a phone is already online. */
+  accept?: (device: Device) => boolean;
 }
 
-/** Polls until a controllable device shows up, preferring a computer (the app we just launched). */
+/** Polls until a controllable device shows up: one `accept` approves, or else preferably a computer. */
 export async function waitForDevice(options: WaitForDeviceOptions): Promise<Device | undefined> {
   const sleep = options.sleep ?? ((milliseconds: number) => delay(milliseconds));
   const attempts = Math.max(1, Math.ceil(options.timeoutMs / options.intervalMs));
@@ -45,9 +65,13 @@ export async function waitForDevice(options: WaitForDeviceOptions): Promise<Devi
   for (let attempt = 0; attempt < attempts; attempt++) {
     if (options.isCancelled?.()) return undefined;
     const devices = (await options.fetchDevices()).filter(isControllable);
-    const computer = devices.find((device) => device.type.toLowerCase() === 'computer');
-    if (computer ?? devices[0]) return computer ?? devices[0];
+    const found = options.accept ? devices.find(options.accept) : preferComputer(devices);
+    if (found) return found;
     await sleep(options.intervalMs);
   }
   return undefined;
+}
+
+function preferComputer(devices: Device[]): Device | undefined {
+  return devices.find((device) => device.type.toLowerCase() === 'computer') ?? devices[0];
 }

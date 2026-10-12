@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 import type { Device } from '../src/api/types.ts';
 import { DesktopLaunchError, launchFirstAvailable, launchSpotifyDesktop } from '../src/device/desktopLauncher.ts';
 import { customLaunchCandidate, listLaunchCandidates, type LaunchCandidate } from '../src/device/desktopLocator.ts';
-import { chooseDevice, waitForDevice } from '../src/device/deviceChoice.ts';
+import { chooseDevice, isLaunchedLocalDevice, isThisComputer, waitForDevice } from '../src/device/deviceChoice.ts';
 
 function device(overrides: Partial<Device> & { id: string | null; name: string }): Device {
   return { type: 'Computer', is_active: false, is_restricted: false, volume_percent: 50, ...overrides };
@@ -191,5 +191,45 @@ describe('launchFirstAvailable', () => {
         return true;
       },
     );
+  });
+});
+
+describe('isThisComputer', () => {
+  it('matches the desktop device named after this host, however each OS formats it', () => {
+    assert.equal(isThisComputer(device({ id: 'l', name: 'Nekolia-notebook' }), 'Nekolia-notebook'), true);
+    assert.equal(isThisComputer(device({ id: 'm', name: "Alicia's MacBook Air" }), 'Alicias-MacBook-Air.local'), true);
+    assert.equal(isThisComputer(device({ id: 'w', name: 'NEKOLIA-PC' }), 'nekolia-pc'), true);
+  });
+
+  it('rejects other computers and non-computers with the same name', () => {
+    assert.equal(isThisComputer(device({ id: 'o', name: 'Office-PC' }), 'Nekolia-notebook'), false);
+    assert.equal(isThisComputer(device({ id: 'p', name: 'Nekolia-notebook', type: 'Smartphone' }), 'Nekolia-notebook'), false);
+  });
+});
+
+describe('isLaunchedLocalDevice', () => {
+  const before = new Set(['phone', 'office']);
+
+  it('falls back to a computer that was not online before the launch', () => {
+    assert.equal(isLaunchedLocalDevice(device({ id: 'renamed', name: 'My Spotify' }), 'Nekolia-notebook', before), true);
+  });
+
+  it('ignores devices that were already online', () => {
+    assert.equal(isLaunchedLocalDevice(device({ id: 'office', name: 'Office-PC' }), 'Nekolia-notebook', before), false);
+    assert.equal(isLaunchedLocalDevice({ ...phone }, 'Nekolia-notebook', before), false);
+  });
+});
+
+describe('waitForDevice with accept', () => {
+  it('keeps waiting past an online phone until the accepted device appears', async () => {
+    const responses: Device[][] = [[phone], [phone], [phone, laptop]];
+    const found = await waitForDevice({
+      fetchDevices: async () => responses.shift() ?? [],
+      timeoutMs: 10_000,
+      intervalMs: 1000,
+      sleep: async () => undefined,
+      accept: (candidate) => candidate.id === 'laptop',
+    });
+    assert.equal(found, laptop);
   });
 });

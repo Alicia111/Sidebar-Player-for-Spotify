@@ -1,4 +1,4 @@
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
 import * as vscode from 'vscode';
 import { collectPages, type PlayRequest, type SpotifyApi } from './api/endpoints.ts';
@@ -8,7 +8,7 @@ import { NotLoggedInError, type AuthManager } from './auth/authManager.ts';
 import { LoginCancelledError } from './auth/loopbackServer.ts';
 import { launchFirstAvailable } from './device/desktopLauncher.ts';
 import { customLaunchCandidate, listLaunchCandidates, type LaunchCandidate } from './device/desktopLocator.ts';
-import { chooseDevice, isControllable, waitForDevice } from './device/deviceChoice.ts';
+import { chooseDevice, isControllable, isLaunchedLocalDevice, isThisComputer, waitForDevice } from './device/deviceChoice.ts';
 import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
 import { getOrLoad } from './shared/promiseCache.ts';
 import { toSpotifyWebUrl } from './shared/spotifyLinks.ts';
@@ -36,6 +36,11 @@ const DEVICE_ICONS: Record<string, string> = {
 
 export function deviceIconId(device: Device): string {
   return DEVICE_ICONS[device.type.toLowerCase()] ?? 'unmute';
+}
+
+/** A device row in the picker; without `device` it is the "This computer" entry that starts the local app. */
+interface DevicePickItem extends vscode.QuickPickItem {
+  device?: Device;
 }
 
 /** Every user-triggered Spotify operation, with consistent error reporting. */
@@ -342,15 +347,29 @@ export class SpotifyActions implements vscode.Disposable {
   }
 
   private async startDesktopDevice(): Promise<Device | undefined> {
-    const config = vscode.workspace.getConfiguration('spotifySidebar');
-    if (!config.get<boolean>('autoLaunchDesktop', true)) {
+    if (!vscode.workspace.getConfiguration('spotifySidebar').get<boolean>('autoLaunchDesktop', true)) {
       await this.showNoDeviceHelp();
       return undefined;
     }
+    this.log.info('No Spotify devices online; starting the desktop app.');
+    return this.launchDesktopAndTransfer();
+  }
 
+  /**
+   * The user picked "This computer" while other devices are online. Explicitly chosen, so this ignores
+   * `autoLaunchDesktop`, and waits for the local app only, never for the phone that is already there.
+   */
+  private launchOnThisComputer(devicesBefore: Device[]): Promise<Device | undefined> {
+    const idsBefore = new Set(devicesBefore.flatMap((device) => (device.id ? [device.id] : [])));
+    const localHostname = hostname();
+    this.log.info(`Starting the desktop app to play on this computer ("${localHostname}").`);
+    return this.launchDesktopAndTransfer((device) => isLaunchedLocalDevice(device, localHostname, idsBefore));
+  }
+
+  private async launchDesktopAndTransfer(accept?: (device: Device) => boolean): Promise<Device | undefined> {
+    const config = vscode.workspace.getConfiguration('spotifySidebar');
     const shouldMinimize = config.get<boolean>('minimizeDesktop', true);
     const candidates = desktopLaunchCandidates(config.get<string>('desktopCommand', '').trim(), shouldMinimize);
-    this.log.info(`No Spotify devices online; starting the desktop app${shouldMinimize ? ' minimized' : ''}.`);
     const launched = await launchFirstAvailable(candidates);
     this.log.info(`Started Spotify with: ${launched.command} ${launched.args.join(' ')}`.trimEnd());
     // Windows and macOS get launch flags instead; Linux gets the window iconified after it appears.
@@ -363,6 +382,7 @@ export class SpotifyActions implements vscode.Disposable {
           timeoutMs: DESKTOP_STARTUP_TIMEOUT_MS,
           intervalMs: DEVICE_POLL_INTERVAL_MS,
           isCancelled: () => cancellation.isCancellationRequested,
+          accept,
         }),
     );
     if (!device) {
@@ -397,16 +417,26 @@ export class SpotifyActions implements vscode.Disposable {
     return this.askAndTransfer(devices);
   }
 
+  /** Lists the online devices, plus "This computer" when the local app is not among them. */
   private async askAndTransfer(devices: Device[]): Promise<Device | undefined> {
-    const picked = await vscode.window.showQuickPick(
-      devices.map((device) => ({
-        label: `$(${deviceIconId(device)}) ${device.name}`,
-        description: device.is_active ? 'active' : device.type,
-        device,
-      })),
-      { title: 'Play on which device?', placeHolder: 'Spotify devices on your account' },
-    );
+    const localHostname = hostname();
+    const items: DevicePickItem[] = devices.map((device) => ({
+      label: `$(${deviceIconId(device)}) ${device.name}`,
+      description: [device.is_active ? 'active' : device.type, isThisComputer(device, localHostname) ? 'this computer' : undefined]
+        .filter(Boolean)
+        .join(' · '),
+      device,
+    }));
+    if (!devices.some((device) => isThisComputer(device, localHostname))) {
+      items.push(
+        { label: '', kind: vscode.QuickPickItemKind.Separator },
+        { label: '$(device-desktop) This computer', description: 'start Spotify here' },
+      );
+    }
+
+    const picked = await vscode.window.showQuickPick(items, { title: 'Play on which device?', placeHolder: 'Spotify devices on your account' });
     if (!picked) return undefined;
+    if (!picked.device) return this.launchOnThisComputer(devices);
     await this.transferTo(picked.device);
     return picked.device;
   }
