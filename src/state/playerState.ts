@@ -11,6 +11,9 @@ const BACKGROUND_POLL_FACTOR = 5;
 // Give Spotify a moment to apply a command before reading the new state back.
 const REFRESH_AFTER_COMMAND_MS = 400;
 const MAX_LIKED_CACHE_ENTRIES = 500;
+// Must match the `spotifySidebar.pollIntervalMs` default and minimum in package.json.
+const DEFAULT_POLL_INTERVAL_MS = 3000;
+const MIN_POLL_INTERVAL_MS = 1000;
 
 /** Single source of truth for what is playing; polls only while someone can see the result. */
 export class PlayerState implements vscode.Disposable {
@@ -25,6 +28,7 @@ export class PlayerState implements vscode.Disposable {
   private sampledAt = 0;
   private refreshInFlight: Promise<void> | undefined;
   private pollTimer: ReturnType<typeof setTimeout> | undefined;
+  private refreshSoonTimer: ReturnType<typeof setTimeout> | undefined;
   private isWindowFocused = vscode.window.state.focused;
   /** Surfaces (sidebar view, lyrics panel…) currently on screen; any of them wants fast polling. */
   private readonly visibleSurfaces = new Set<string>();
@@ -77,8 +81,13 @@ export class PlayerState implements vscode.Disposable {
     return this.refreshInFlight;
   }
 
+  /** Debounced: a burst of commands (or one command touching several steps) causes a single read-back. */
   refreshSoon(): void {
-    setTimeout(() => void this.refresh(), REFRESH_AFTER_COMMAND_MS);
+    clearTimeout(this.refreshSoonTimer);
+    this.refreshSoonTimer = setTimeout(() => {
+      this.refreshSoonTimer = undefined;
+      void this.refresh();
+    }, REFRESH_AFTER_COMMAND_MS);
   }
 
   /** Applies an expected change immediately so the UI feels instant; the next poll corrects it. */
@@ -103,6 +112,7 @@ export class PlayerState implements vscode.Disposable {
   dispose(): void {
     this.isDisposed = true;
     clearTimeout(this.pollTimer);
+    clearTimeout(this.refreshSoonTimer);
     this.changeEmitter.dispose();
     this.disposables.forEach((disposable) => disposable.dispose());
   }
@@ -152,7 +162,10 @@ export class PlayerState implements vscode.Disposable {
 
   private currentPollIntervalMs(): number | undefined {
     if (this.isDisposed || !this.auth.isLoggedIn || !this.isWindowFocused) return undefined;
-    const baseMs = Math.max(1000, vscode.workspace.getConfiguration('spotifySidebar').get<number>('pollIntervalMs', 3000));
+    const baseMs = Math.max(
+      MIN_POLL_INTERVAL_MS,
+      vscode.workspace.getConfiguration('spotifySidebar').get<number>('pollIntervalMs', DEFAULT_POLL_INTERVAL_MS),
+    );
     return this.visibleSurfaces.size > 0 ? baseMs : baseMs * BACKGROUND_POLL_FACTOR;
   }
 
