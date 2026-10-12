@@ -10,6 +10,7 @@ import {
 import { ArtistPage } from './artistPage.ts';
 import { loadState, saveState, send } from './bridge.ts';
 import { coverImage, h, icon, iconButton, setIcon } from './dom.ts';
+import { listenOnSpotifyButton } from './spotifyLink.ts';
 
 const SEARCH_DEBOUNCE_MS = 350;
 const KIND_LABELS: Record<SearchKind, string> = { track: 'Songs', album: 'Albums', artist: 'Artists', playlist: 'Playlists' };
@@ -163,6 +164,8 @@ export class SearchPanel {
         this.createLikeButton(item),
       );
     }
+    const spotifyLink = listenOnSpotifyButton(item.uri);
+    if (spotifyLink) actions.append(spotifyLink);
 
     const subtitle = item.durationMs === undefined ? item.subtitle : `${item.subtitle} · ${formatDuration(item.durationMs)}`;
     const row = h('li', { className: `result kind-${item.kind}`, attributes: { tabindex: '0' } }, [

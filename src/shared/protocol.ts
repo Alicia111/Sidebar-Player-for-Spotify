@@ -111,6 +111,7 @@ export type WebviewMessage =
   | { type: 'queue'; uri: string }
   | { type: 'setLiked'; uri: string; isLiked: boolean }
   | { type: 'addToPlaylist'; uri: string }
+  | { type: 'openInSpotify'; uri: string }
   | { type: 'artistAlbums'; requestId: number; artistUri: string; offset: number }
   | { type: 'albumTracks'; requestId: number; albumUri: string };
 
@@ -147,6 +148,7 @@ export function parseWebviewMessage(raw: unknown): WebviewMessage | null {
       return parsePlayMessage(message);
     case 'queue':
     case 'addToPlaylist':
+    case 'openInSpotify':
       return isSpotifyUri(message.uri) ? { type: message.type, uri: message.uri } : null;
     case 'artistAlbums':
       return Number.isSafeInteger(message.requestId) &&

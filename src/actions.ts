@@ -11,6 +11,7 @@ import { customLaunchCandidate, listLaunchCandidates, type LaunchCandidate } fro
 import { chooseDevice, isControllable, waitForDevice } from './device/deviceChoice.ts';
 import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
 import { getOrLoad } from './shared/promiseCache.ts';
+import { toSpotifyWebUrl } from './shared/spotifyLinks.ts';
 import type { PlayerState } from './state/playerState.ts';
 
 const NEXT_REPEAT_MODE: Record<RepeatMode, RepeatMode> = { off: 'context', context: 'track', track: 'off' };
@@ -207,6 +208,15 @@ export class SpotifyActions implements vscode.Disposable {
 
   setLiked(uri: string, isLiked: boolean): Promise<void> {
     return this.run('Like', () => this.applyLike(uri, isLiked));
+  }
+
+  /** Opens the item on open.spotify.com, which hands off to the desktop app when it is installed. */
+  openInSpotify(uri: string): Promise<void> {
+    return this.run('Open in Spotify', async () => {
+      const url = toSpotifyWebUrl(uri);
+      if (!url) throw new Error(`${uri} has no page on open.spotify.com`);
+      await vscode.env.openExternal(vscode.Uri.parse(url, true));
+    });
   }
 
   // ---- Playlists ----------------------------------------------------------

@@ -1,5 +1,6 @@
 import { formatDuration } from '../shared/format.ts';
 import type { NowPlayingView, PlayerCommand } from '../shared/protocol.ts';
+import { LISTEN_ON_SPOTIFY_LABEL, toSpotifyWebUrl } from '../shared/spotifyLinks.ts';
 import { send } from './bridge.ts';
 import { coverImage, h, iconButton, setIcon, icon } from './dom.ts';
 
@@ -28,6 +29,14 @@ export class PlayerPanel {
   private readonly repeatButton = this.commandButton('repeat', 'Repeat', 'cycleRepeat');
   private readonly likeButton = this.commandButton('heart', 'Save to Liked Songs', 'toggleLikeCurrent');
   private readonly lyricsButton = this.commandButton('lyrics', 'Show lyrics', 'showLyrics');
+  private readonly spotifyLinkButton = iconButton({
+    icon: 'openExternal',
+    label: LISTEN_ON_SPOTIFY_LABEL,
+    onClick: () => {
+      const uri = this.state?.track?.uri;
+      if (uri) send({ type: 'openInSpotify', uri });
+    },
+  });
   private readonly idleNotice = h('div', { className: 'idle-notice' });
 
   constructor() {
@@ -45,6 +54,7 @@ export class PlayerPanel {
         this.coverSlot,
         h('div', { className: 'track-meta' }, [this.title, this.subtitle, this.deviceLabel]),
         this.likeButton,
+        this.spotifyLinkButton,
       ]),
       h('div', { className: 'progress-row' }, [this.elapsed, this.progress, this.duration]),
       h('div', { className: 'controls' }, [this.shuffleButton, this.previousButton, this.playButton, this.nextButton, this.repeatButton, this.lyricsButton]),
@@ -94,6 +104,8 @@ export class PlayerPanel {
     setIcon(this.repeatButton, repeat === 'track' ? 'repeatOne' : 'repeat');
     this.repeatButton.classList.toggle('is-active', repeat !== 'off');
     this.repeatButton.title = { off: 'Repeat: off', context: 'Repeat: all', track: 'Repeat: one' }[repeat];
+
+    this.spotifyLinkButton.hidden = !track || toSpotifyWebUrl(track.uri) === undefined;
 
     const isLiked = track?.isLiked;
     this.likeButton.hidden = isLiked === undefined;

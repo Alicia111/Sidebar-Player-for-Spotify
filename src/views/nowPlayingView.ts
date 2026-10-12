@@ -117,6 +117,8 @@ export class NowPlayingViewProvider implements vscode.WebviewViewProvider, vscod
         return;
       case 'addToPlaylist':
         return this.actions.addToPlaylist(message.uri);
+      case 'openInSpotify':
+        return this.actions.openInSpotify(message.uri);
       case 'artistAlbums':
         return this.loadArtistAlbums(message.requestId, message.artistUri, message.offset);
       case 'albumTracks':

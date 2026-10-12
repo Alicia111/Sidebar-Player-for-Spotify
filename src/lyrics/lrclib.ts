@@ -5,7 +5,7 @@ const LRCLIB_BASE_URL = 'https://lrclib.net/api';
 declare const __EXTENSION_VERSION__: string | undefined;
 const EXTENSION_VERSION = typeof __EXTENSION_VERSION__ === 'string' ? __EXTENSION_VERSION__ : 'dev';
 // LRCLIB asks clients to identify themselves.
-const USER_AGENT = `spotify-sidebar-vscode/${EXTENSION_VERSION}`;
+const USER_AGENT = `sidebar-player-for-spotify/${EXTENSION_VERSION}`;
 const REQUEST_TIMEOUT_MS = 10_000;
 // Search fallback: accept a match only if its length is this close to the playing track.
 const MAX_DURATION_DIFFERENCE_SECONDS = 3;

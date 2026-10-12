@@ -1,4 +1,4 @@
-# Spotify Sidebar for VS Code
+# Sidebar Player for Spotify
 
 Control Spotify without leaving the editor:
 
@@ -8,6 +8,7 @@ Control Spotify without leaving the editor:
 - **Playlists** tree: Liked Songs and your playlists. Click a track to play it in context. The context menu adds to queue, likes/unlikes or adds to another playlist.
 - **Devices** tree: see your Spotify Connect devices and move playback between them
 - **Status bar** controls and keyboard shortcuts
+- **Listen on Spotify** links on the playing track, search results, artists and albums open the item in Spotify
 - **Lyrics** panel beside the editor, from [LRCLIB](https://lrclib.net). Time-synced lyrics highlight the current line and follow playback, and clicking a line seeks to it.
 
 > **Audio does not play inside VS Code.** VS Code webviews lack the DRM module Spotify requires, so this extension is a remote control for a Spotify app you already have open (desktop, web player at open.spotify.com, phone, speaker…).
@@ -94,5 +95,8 @@ src/
   webview/    browser-side UI (plain DOM, no framework)
 ```
 
-Icons in the webview are from Google's Material Icons (Apache License 2.0).
-# Spotify-for-Vscode
+## License
+
+MIT, see [LICENSE](LICENSE). The webview icons are Google's Material Icons under the Apache License 2.0; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+This is an independent project, not affiliated with or endorsed by Spotify. Spotify is a trademark of Spotify AB.

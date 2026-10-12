@@ -109,5 +109,5 @@ function sendResultPage(response: ServerResponse, isSuccess: boolean): void {
     'Content-Type': 'text/html; charset=utf-8',
     'Content-Security-Policy': "default-src 'none'",
   });
-  response.end(`<!doctype html><meta charset="utf-8"><title>Spotify Sidebar</title><p>${message}</p>`);
+  response.end(`<!doctype html><meta charset="utf-8"><title>Sidebar Player for Spotify</title><p>${message}</p>`);
 }

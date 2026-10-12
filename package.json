@@ -1,10 +1,14 @@
 {
   "name": "spotify-vscode",
-  "displayName": "Spotify Sidebar",
-  "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes.",
+  "displayName": "Sidebar Player for Spotify",
+  "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes. Not affiliated with Spotify.",
   "version": "0.1.0",
   "publisher": "nekolia",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alicia111/Spotify-for-Vscode.git"
+  },
   "private": true,
   "engines": {
     "vscode": "^1.90.0"
@@ -26,7 +30,7 @@
       "activitybar": [
         {
           "id": "spotifySidebar",
-          "title": "Spotify",
+          "title": "Sidebar Player for Spotify",
           "icon": "media/activitybar.svg"
         }
       ]
@@ -339,7 +343,7 @@
       }
     ],
     "configuration": {
-      "title": "Spotify Sidebar",
+      "title": "Sidebar Player for Spotify",
       "properties": {
         "spotifySidebar.clientId": {
           "type": "string",
@@ -393,7 +397,7 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test \"test/**/*.test.ts\"",
-    "package": "npm run typecheck && npm test && node esbuild.mjs --production && vsce package --no-dependencies --allow-missing-repository",
+    "package": "npm run typecheck && npm test && node esbuild.mjs --production && vsce package --no-dependencies",
     "vscode:prepublish": "node esbuild.mjs --production"
   },
   "devDependencies": {

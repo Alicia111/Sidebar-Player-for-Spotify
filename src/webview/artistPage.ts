@@ -1,6 +1,7 @@
 import type { AlbumView, ArtistHeaderView, SearchItemView } from '../shared/protocol.ts';
 import { send } from './bridge.ts';
 import { coverImage, h, iconButton, setIcon } from './dom.ts';
+import { listenOnSpotifyButton } from './spotifyLink.ts';
 
 export interface ArtistPageOptions {
   onBack: () => void;
@@ -109,6 +110,7 @@ export class ArtistPage {
         h('div', { className: 'artist-name', text: artist.name, title: artist.name }),
         h('div', { className: 'result-subtitle', text: artist.subtitle }),
       ]),
+      ...[listenOnSpotifyButton(artist.uri)].filter((button) => button !== undefined),
       playButton,
     );
   }
@@ -130,6 +132,7 @@ export class ArtistPage {
       ]),
       h('div', { className: 'result-actions' }, [
         iconButton({ icon: 'play', label: `Play ${album.title}`, onClick: () => send({ type: 'play', uri: album.uri }) }),
+        ...[listenOnSpotifyButton(album.uri)].filter((button) => button !== undefined),
       ]),
     ]);
     headerRow.addEventListener('click', () => this.toggleAlbum(album.uri));
