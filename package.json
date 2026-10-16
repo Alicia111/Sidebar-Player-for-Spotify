@@ -3,11 +3,15 @@
   "displayName": "Sidebar Player for Spotify",
   "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes. Not affiliated with Spotify.",
   "version": "0.1.0",
-  "publisher": "nekolia",
+  "publisher": "alicia111",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Alicia111/Spotify-for-Vscode.git"
+  },
+  "homepage": "https://github.com/Alicia111/Spotify-for-Vscode#readme",
+  "bugs": {
+    "url": "https://github.com/Alicia111/Spotify-for-Vscode/issues"
   },
   "private": true,
   "engines": {
