@@ -8,3 +8,4 @@ tsconfig.json
 esbuild.mjs
 .gitignore
 *.vsix
+media/icon.svg

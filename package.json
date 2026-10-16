@@ -4,6 +4,7 @@
   "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes. Not affiliated with Spotify.",
   "version": "0.1.0",
   "publisher": "alicia111",
+  "icon": "media/icon.png",
   "license": "MIT",
   "repository": {
     "type": "git",
