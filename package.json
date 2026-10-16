@@ -1,5 +1,5 @@
 {
-  "name": "spotify-vscode",
+  "name": "sidebar-player-for-spotify",
   "displayName": "Sidebar Player for Spotify",
   "description": "Control Spotify from the VS Code sidebar: playback, search, playlists and likes. Not affiliated with Spotify.",
   "version": "0.1.0",
