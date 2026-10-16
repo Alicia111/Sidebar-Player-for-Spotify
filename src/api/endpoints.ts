@@ -4,9 +4,11 @@ import type {
   ArtistAlbum,
   CurrentUser,
   Device,
+  CursorPaging,
   Paging,
   PlaybackQueue,
   PlaybackState,
+  PlayHistory,
   PlaylistItem,
   RepeatMode,
   SavedTrack,
@@ -24,6 +26,8 @@ const COLLECTION_PAGE_SIZE = 50;
 export const ARTIST_ALBUMS_PAGE_SIZE = 10;
 const ARTIST_ALBUM_GROUPS = 'album,single';
 const PLAYLIST_ADD_BATCH_SIZE = 100;
+// The most the recently played endpoint returns in one request.
+const RECENTLY_PLAYED_LIMIT = 50;
 const CONTEXT_PATHS: Record<string, string> = { playlist: '/playlists', album: '/albums', artist: '/artists', show: '/shows' };
 
 export interface PlayRequest {
@@ -126,6 +130,14 @@ export class SpotifyApi {
 
   async transferPlayback(deviceId: string, shouldPlay: boolean): Promise<void> {
     await this.client.request('PUT', '/me/player', { body: { device_ids: [deviceId], play: shouldPlay } });
+  }
+
+  /** Most recent first. Needs the `user-read-recently-played` scope (403 without it). */
+  async getRecentlyPlayed(): Promise<PlayHistory[]> {
+    const response = await this.client.request<CursorPaging<PlayHistory>>('GET', '/me/player/recently-played', {
+      query: { limit: RECENTLY_PLAYED_LIMIT },
+    });
+    return requireBody(response, 'GET /me/player/recently-played').items;
   }
 
   // ---- Search -------------------------------------------------------------

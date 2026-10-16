@@ -126,6 +126,18 @@ export interface SavedTrack {
   track: Track;
 }
 
+/** One entry of the listening history; the endpoint returns tracks only, never episodes. */
+export interface PlayHistory {
+  track: Track;
+  played_at: string;
+}
+
+/** Cursor-based page, used by the recently played endpoint. */
+export interface CursorPaging<T> {
+  items: T[];
+  next: string | null;
+}
+
 export interface CurrentUser {
   id: string;
   display_name: string | null;

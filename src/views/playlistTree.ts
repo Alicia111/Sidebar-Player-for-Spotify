@@ -3,23 +3,26 @@ import type { SpotifyActions } from '../actions.ts';
 import { describeError } from '../actions.ts';
 import { collectPages, type SpotifyApi } from '../api/endpoints.ts';
 import { SpotifyApiError } from '../api/spotifyClient.ts';
-import type { PlayableItem, SimplifiedPlaylist } from '../api/types.ts';
+import type { PlayableItem, SimplifiedPlaylist, Track } from '../api/types.ts';
 import { formatDuration } from '../shared/format.ts';
 import { getOrLoad } from '../shared/promiseCache.ts';
-import { joinArtistNames } from '../state/viewModels.ts';
+import type { PlayerState } from '../state/playerState.ts';
+import { joinArtistNames, uniqueRecentTracks } from '../state/viewModels.ts';
 
 // Bounds memory and request count for very large playlists.
 const MAX_TRACKS_PER_LIST = 500;
 // Spotify rejects overly long `uris` arrays in a play request.
 const MAX_PLAY_URIS = 100;
 const LIKED_SONGS_ID = 'liked-songs';
+const RECENTLY_PLAYED_ID = 'recently-played';
 
 /** Where a track node came from, which decides how clicking it starts playback. */
 export type TrackSource =
   | { kind: 'playlist'; contextUri: string; position: number }
-  | { kind: 'liked'; siblingUris: string[]; index: number };
+  | { kind: 'uris'; siblingUris: string[]; index: number };
 
 export type PlaylistTreeNode =
+  | { kind: 'recent' }
   | { kind: 'liked' }
   | { kind: 'playlist'; playlist: SimplifiedPlaylist }
   | { kind: 'track'; item: PlayableItem; source: TrackSource; parentId: string }
@@ -27,19 +30,24 @@ export type PlaylistTreeNode =
 
 export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTreeNode>, vscode.Disposable {
   private readonly api: SpotifyApi;
+  private readonly player: PlayerState;
   private readonly actions: SpotifyActions;
   private readonly changeEmitter = new vscode.EventEmitter<PlaylistTreeNode | undefined>();
   private readonly disposables: vscode.Disposable[] = [];
   /** Holds in-flight loads too, so expanding a node while "Play" reads it fetches the list once. */
   private readonly childrenCache = new Map<string, Promise<PlaylistTreeNode[]>>();
+  private readonly recentlyPlayedNode: PlaylistTreeNode = { kind: 'recent' };
   private readonly likedSongsNode: PlaylistTreeNode = { kind: 'liked' };
+  private lastSeenTrackUri: string | undefined;
 
   readonly onDidChangeTreeData = this.changeEmitter.event;
 
-  constructor(api: SpotifyApi, actions: SpotifyActions) {
+  constructor(api: SpotifyApi, player: PlayerState, actions: SpotifyActions) {
     this.api = api;
+    this.player = player;
     this.actions = actions;
     this.disposables.push(
+      player.onDidChange(() => this.handlePlaybackChange()),
       actions.onDidChangePlaylists(() => this.refresh()),
       actions.onDidChangeLibrary(() => this.refreshLikedSongs()),
     );
@@ -53,6 +61,13 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
 
   getTreeItem(node: PlaylistTreeNode): vscode.TreeItem {
     switch (node.kind) {
+      case 'recent': {
+        const item = new vscode.TreeItem('Recently Played', vscode.TreeItemCollapsibleState.Collapsed);
+        item.id = RECENTLY_PLAYED_ID;
+        item.iconPath = new vscode.ThemeIcon('history');
+        item.contextValue = 'recent';
+        return item;
+      }
       case 'liked': {
         const item = new vscode.TreeItem('Liked Songs', vscode.TreeItemCollapsibleState.Collapsed);
         item.id = LIKED_SONGS_ID;
@@ -84,6 +99,7 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
   async getChildren(node?: PlaylistTreeNode): Promise<PlaylistTreeNode[]> {
     try {
       if (!node) return await this.loadRoot();
+      if (node.kind === 'recent') return await getOrLoad(this.childrenCache, RECENTLY_PLAYED_ID, () => this.loadRecentlyPlayed());
       if (node.kind === 'liked') return await getOrLoad(this.childrenCache, LIKED_SONGS_ID, () => this.loadLikedSongs());
       if (node.kind === 'playlist') {
         return await getOrLoad(this.childrenCache, node.playlist.id, () => this.loadPlaylistTracks(node.playlist));
@@ -97,8 +113,9 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
   /** Arguments passed to `spotifySidebar.playItem` from this tree. */
   playNode(node: PlaylistTreeNode): Promise<void> {
     switch (node.kind) {
+      case 'recent':
       case 'liked':
-        return this.playLikedSongs();
+        return this.playFirstChild(node);
       case 'playlist':
         return this.actions.play({ contextUri: node.playlist.uri });
       case 'track':
@@ -117,20 +134,40 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
     if (this.childrenCache.delete(LIKED_SONGS_ID)) this.changeEmitter.fire(this.likedSongsNode);
   }
 
+  /** A new track means the previous one just joined the history, so reload the list if it was opened. */
+  private handlePlaybackChange(): void {
+    const trackUri = this.player.current?.item?.uri;
+    if (trackUri === this.lastSeenTrackUri) return;
+    this.lastSeenTrackUri = trackUri;
+    if (this.childrenCache.delete(RECENTLY_PLAYED_ID)) this.changeEmitter.fire(this.recentlyPlayedNode);
+  }
+
   private async loadRoot(): Promise<PlaylistTreeNode[]> {
     const playlists = await this.actions.fetchMyPlaylists();
-    return [this.likedSongsNode, ...playlists.map((playlist): PlaylistTreeNode => ({ kind: 'playlist', playlist }))];
+    return [this.recentlyPlayedNode, this.likedSongsNode, ...playlists.map((playlist): PlaylistTreeNode => ({ kind: 'playlist', playlist }))];
+  }
+
+  private async loadRecentlyPlayed(): Promise<PlaylistTreeNode[]> {
+    try {
+      const tracks = uniqueRecentTracks(await this.api.getRecentlyPlayed());
+      if (tracks.length === 0) return [{ kind: 'message', text: 'Nothing played yet' }];
+      return toUriListNodes(tracks, RECENTLY_PLAYED_ID);
+    } catch (error) {
+      // Sessions from before this view existed lack the user-read-recently-played scope.
+      if (error instanceof SpotifyApiError && error.status === 403) {
+        return [{
+          kind: 'message',
+          text: 'Log out and in again to see recently played',
+          tooltip: 'This needs a permission your current login did not grant.',
+        }];
+      }
+      throw error;
+    }
   }
 
   private async loadLikedSongs(): Promise<PlaylistTreeNode[]> {
     const { items, total } = await collectPages((page) => this.api.getSavedTracks(page), MAX_TRACKS_PER_LIST);
-    const siblingUris = items.map((saved) => saved.track.uri);
-    const nodes: PlaylistTreeNode[] = items.map((saved, index) => ({
-      kind: 'track',
-      item: saved.track,
-      source: { kind: 'liked', siblingUris, index },
-      parentId: LIKED_SONGS_ID,
-    }));
+    const nodes = toUriListNodes(items.map((saved) => saved.track), LIKED_SONGS_ID);
     return withTruncationNotice(nodes, total);
   }
 
@@ -156,8 +193,8 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
     }
   }
 
-  private async playLikedSongs(): Promise<void> {
-    const nodes = await this.getChildren(this.likedSongsNode);
+  private async playFirstChild(node: PlaylistTreeNode): Promise<void> {
+    const nodes = await this.getChildren(node);
     const first = nodes.find((node) => node.kind === 'track');
     if (first?.kind === 'track') await this.playTrackNode(first.source);
   }
@@ -166,7 +203,7 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
     if (source.kind === 'playlist') {
       return this.actions.play({ contextUri: source.contextUri, offsetPosition: source.position });
     }
-    // Liked Songs has no public context URI, so play a window of the list starting at the clicked track.
+    // Liked Songs and the listening history have no public context URI, so play a window of the list starting at the clicked track.
     return this.actions.play({ uris: source.siblingUris.slice(source.index, source.index + MAX_PLAY_URIS) });
   }
 }
@@ -191,6 +228,12 @@ function buildTrackItem(node: Extract<PlaylistTreeNode, { kind: 'track' }>): vsc
   item.contextValue = 'track';
   item.command = { command: 'spotifySidebar.playItem', title: 'Play', arguments: [node] };
   return item;
+}
+
+/** Tracks with no playable context, which play as a list starting at the clicked one. */
+function toUriListNodes(tracks: Track[], parentId: string): PlaylistTreeNode[] {
+  const siblingUris = tracks.map((track) => track.uri);
+  return tracks.map((track, index) => ({ kind: 'track', item: track, source: { kind: 'uris', siblingUris, index }, parentId }));
 }
 
 function withTruncationNotice(nodes: PlaylistTreeNode[], total: number): PlaylistTreeNode[] {

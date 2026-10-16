@@ -11,6 +11,7 @@ export const SPOTIFY_SCOPES = [
   'playlist-modify-public',
   'user-library-read',
   'user-library-modify',
+  'user-read-recently-played',
 ];
 
 export interface TokenSet {

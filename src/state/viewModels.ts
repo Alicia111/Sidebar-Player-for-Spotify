@@ -2,6 +2,7 @@ import type {
   Artist,
   ArtistAlbum,
   PlayableItem,
+  PlayHistory,
   PlaybackState,
   SearchResponse,
   SimplifiedAlbum,
@@ -46,6 +47,18 @@ export function toArtistLinks(artists: readonly SimplifiedArtist[]): ArtistLinkV
 /** Local files and episodes can't be saved through the library endpoints we use. */
 export function isLikeable(item: PlayableItem): boolean {
   return item.type === 'track' && !item.is_local;
+}
+
+/** Each track once, at its most recent play, so songs on repeat don't crowd out the rest. */
+export function uniqueRecentTracks(history: readonly PlayHistory[]): Track[] {
+  const seenUris = new Set<string>();
+  const tracks: Track[] = [];
+  for (const { track } of history) {
+    if (seenUris.has(track.uri)) continue;
+    seenUris.add(track.uri);
+    tracks.push(track);
+  }
+  return tracks;
 }
 
 export function toNowPlayingView(

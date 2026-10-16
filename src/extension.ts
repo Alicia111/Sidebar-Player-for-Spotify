@@ -21,7 +21,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   const actions = new SpotifyActions({ api, auth, player, log, memento: context.globalState, extensionUri: context.extensionUri });
 
   const nowPlaying = new NowPlayingViewProvider({ extensionUri: context.extensionUri, api, auth, player, actions, log });
-  const playlists = new PlaylistTreeProvider(api, actions);
+  const playlists = new PlaylistTreeProvider(api, player, actions);
   const devices = new DeviceTreeProvider(api, actions);
   const queue = new QueueTreeProvider(api, player, actions);
   const queueView = vscode.window.createTreeView(QUEUE_VIEW_ID, { treeDataProvider: queue });

@@ -285,12 +285,12 @@
       "view/item/context": [
         {
           "command": "spotifySidebar.playItem",
-          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked|recent)$/",
           "group": "inline@1"
         },
         {
           "command": "spotifySidebar.playItem",
-          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked|recent)$/",
           "group": "1_play@1"
         },
         {
