@@ -22,7 +22,7 @@ const CONTEXT_ICONS: Record<string, string> = {
 
 export type QueueTreeNode =
   | { kind: 'context'; label: string; contextType: string }
-  | { kind: 'track'; item: PlayableItem; role: 'current' | 'upcoming'; position: number; contextUri: string | undefined }
+  | { kind: 'track'; item: PlayableItem; role: 'current' | 'upcoming'; position: number }
   | { kind: 'message'; text: string; tooltip?: string };
 
 /** "Playing from …", the current item and what Spotify will play next. */
@@ -129,10 +129,10 @@ export class QueueTreeProvider implements vscode.TreeDataProvider<QueueTreeNode>
     }
     const nodes: QueueTreeNode[] = contextNode ? [contextNode] : [];
     if (current) {
-      nodes.push({ kind: 'track', item: current, role: 'current', position: 0, contextUri: context?.uri });
+      nodes.push({ kind: 'track', item: current, role: 'current', position: 0 });
     }
     queue.queue.forEach((item, index) => {
-      nodes.push({ kind: 'track', item, role: 'upcoming', position: index + 1, contextUri: context?.uri });
+      nodes.push({ kind: 'track', item, role: 'upcoming', position: index + 1 });
     });
     if (queue.queue.length === 0) nodes.push({ kind: 'message', text: 'Nothing queued after this.' });
     return nodes;

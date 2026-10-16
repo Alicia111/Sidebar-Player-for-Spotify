@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { PlaybackQueue, Track } from '../src/api/types.ts';
-import { fetchSettledQueue, isQueueLagging } from '../src/state/queueSync.ts';
+import { countSkipsTo, fetchSettledQueue, isQueueLagging } from '../src/state/queueSync.ts';
 
 const track: Track = {
   type: 'track',
@@ -69,5 +69,22 @@ describe('fetchSettledQueue', () => {
     });
     assert.equal(result.isSettled, true);
     assert.equal(calls, 1);
+  });
+});
+
+describe('countSkipsTo', () => {
+  const song = (id: string): Track => ({ ...track, id, uri: `spotify:track:${id}` });
+  const queue: PlaybackQueue = { currently_playing: track, queue: [song('a'), song('b'), song('a'), song('c')] };
+
+  it('skips to the slot the tree showed when it still matches', () => {
+    assert.equal(countSkipsTo(queue, 'spotify:track:a', 3), 3);
+  });
+
+  it('falls back to the first match after the queue moved on', () => {
+    assert.equal(countSkipsTo(queue, 'spotify:track:c', 5), 4);
+  });
+
+  it('reports an item that is no longer upcoming', () => {
+    assert.equal(countSkipsTo(queue, 'spotify:track:gone', 1), undefined);
   });
 });

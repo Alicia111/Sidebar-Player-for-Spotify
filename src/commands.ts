@@ -37,7 +37,7 @@ export function registerCommands({ actions, nowPlaying, playlists, devices, lyri
     'spotifySidebar.refreshDevices': () => devices.refresh(),
     'spotifySidebar.refreshQueue': () => queue.refresh(),
     'spotifySidebar.playQueueItem': (node: QueueTreeNode) =>
-      node?.kind === 'track' ? actions.playFromQueue(node.item, node.contextUri) : undefined,
+      node?.kind === 'track' ? actions.playFromQueue(node.item, node.position) : undefined,
     'spotifySidebar.playItem': (node: PlaylistTreeNode) => playlists.playNode(node),
     'spotifySidebar.queueItem': (node: ItemNode) => withTrackUri(node, (uri) => actions.addToQueue(uri)),
     'spotifySidebar.toggleLikeItem': (node: ItemNode) => withTrackUri(node, (uri) => actions.toggleLike(uri)),

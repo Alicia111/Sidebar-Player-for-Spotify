@@ -28,3 +28,14 @@ export async function fetchSettledQueue(options: SettledQueueOptions): Promise<{
     await sleep(options.delayMs);
   }
 }
+
+/**
+ * How many "next" presses reach `uri`, given where the tree showed it. The queue may have moved on since the
+ * tree was drawn, so the expected slot wins when it still matches, otherwise the first match does.
+ * Returns undefined when the item is no longer upcoming.
+ */
+export function countSkipsTo(queue: PlaybackQueue, uri: string, expectedPosition: number): number | undefined {
+  if (queue.queue[expectedPosition - 1]?.uri === uri) return expectedPosition;
+  const index = queue.queue.findIndex((item) => item.uri === uri);
+  return index === -1 ? undefined : index + 1;
+}

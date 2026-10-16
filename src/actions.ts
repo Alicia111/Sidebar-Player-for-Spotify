@@ -13,6 +13,7 @@ import { minimizeSpotifyWindow } from './device/windowMinimizer.ts';
 import { getOrLoad } from './shared/promiseCache.ts';
 import { toSpotifyWebUrl } from './shared/spotifyLinks.ts';
 import type { PlayerState } from './state/playerState.ts';
+import { countSkipsTo } from './state/queueSync.ts';
 
 const NEXT_REPEAT_MODE: Record<RepeatMode, RepeatMode> = { off: 'context', context: 'track', track: 'off' };
 // Spotify needs a moment after a transfer before the new device accepts commands.
@@ -169,22 +170,19 @@ export class SpotifyActions implements vscode.Disposable {
   }
 
   /**
-   * Jumps to an upcoming queue item. Context items are started inside the context so the rest of the
-   * playlist keeps playing. Manually queued items aren't part of it, so tracks fall back to their album.
+   * Jumps to an upcoming queue item by skipping forward instead of restarting the context. Restarting loses
+   * manually queued and recommended items, and Spotify-generated playlists (Daily Mix, Discover Weekly…)
+   * can't be read by third-party apps, so a restarted session comes back with an empty queue.
    */
-  playFromQueue(item: PlayableItem, contextUri: string | undefined): Promise<void> {
-    const uri = item.uri;
+  playFromQueue(item: PlayableItem, position: number): Promise<void> {
     return this.runPlayback('Play from queue', async () => {
-      if (contextUri) {
-        try {
-          await this.api.play({ contextUri, offsetUri: uri });
-          return;
-        } catch (error) {
-          if (!(error instanceof SpotifyApiError) || error.isNoActiveDevice || error.status >= 500) throw error;
-          this.log.info(`${uri} is not in ${contextUri} (HTTP ${error.status}); playing it from its album.`);
-        }
+      const skips = countSkipsTo(await this.api.getQueue(), item.uri, position);
+      if (skips === undefined) {
+        this.queueChangedEmitter.fire();
+        throw new Error(`"${item.name}" is no longer in the queue`);
       }
-      await this.api.play(item.type === 'track' && !item.is_local ? { contextUri: item.album.uri, offsetUri: uri } : { uris: [uri] });
+      // Sequential on purpose: Spotify may drop "next" commands that arrive concurrently.
+      for (let skip = 0; skip < skips; skip++) await this.api.next();
     });
   }
 
