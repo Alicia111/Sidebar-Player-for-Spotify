@@ -1,5 +1,7 @@
 # Sidebar Player for Spotify
 
+English | [繁體中文](README.zh-TW.md)
+
 Control Spotify without leaving the editor:
 
 - **Now Playing** sidebar view: cover art, seekable progress bar, play/pause, next/previous, shuffle, repeat, volume, like button and device switcher
