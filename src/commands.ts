@@ -42,6 +42,8 @@ export function registerCommands({ actions, nowPlaying, playlists, devices, lyri
     'spotifySidebar.queueItem': (node: ItemNode) => withTrackUri(node, (uri) => actions.addToQueue(uri)),
     'spotifySidebar.toggleLikeItem': (node: ItemNode) => withTrackUri(node, (uri) => actions.toggleLike(uri)),
     'spotifySidebar.addItemToPlaylist': (node: ItemNode) => withTrackUri(node, (uri) => actions.addToPlaylist(uri)),
+    'spotifySidebar.removeItemFromPlaylist': (node: PlaylistTreeNode) =>
+      node?.kind === 'track' && node.source.kind === 'playlist' ? actions.removeFromPlaylist(node.source.playlist, node.item) : undefined,
     'spotifySidebar.transferToDevice': (node: DeviceTreeNode) => (node?.kind === 'device' ? actions.transferToDevice(node.device) : undefined),
   };
   return Object.entries(handlers).map(([id, handler]) => vscode.commands.registerCommand(id, handler));

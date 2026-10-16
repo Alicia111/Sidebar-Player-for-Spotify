@@ -58,3 +58,19 @@ describe('SpotifyApi.getContextName', () => {
     assert.equal(calls.length, 0);
   });
 });
+
+describe('SpotifyApi.removeItemsFromPlaylist', () => {
+  it('sends URIs as item objects, at most 100 per request', async () => {
+    const { api, calls } = apiWith(() => Response.json({ snapshot_id: 'abc' }));
+    const uris = Array.from({ length: 101 }, (_, index) => `spotify:track:t${index}`);
+    await api.removeItemsFromPlaylist('p1', uris);
+
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].init?.method, 'DELETE');
+    assert.equal(calls[0].url.pathname, '/v1/playlists/p1/items');
+    const firstBody = JSON.parse(String(calls[0].init?.body));
+    assert.equal(firstBody.items.length, 100);
+    assert.deepEqual(firstBody.items[0], { uri: 'spotify:track:t0' });
+    assert.deepEqual(JSON.parse(String(calls[1].init?.body)), { items: [{ uri: 'spotify:track:t100' }] });
+  });
+});

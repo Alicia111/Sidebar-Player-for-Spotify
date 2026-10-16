@@ -5,7 +5,7 @@ Control Spotify without leaving the editor:
 - **Now Playing** sidebar view: cover art, seekable progress bar, play/pause, next/previous, shuffle, repeat, volume, like button and device switcher
 - **Search** songs, albums, artists and playlists, then play, queue, like or add results to a playlist. Click an artist's name on a song to open their albums and singles.
 - **Queue** tree: where playback comes from (playlist, album, artist or Liked Songs), the current track and what plays next. Click an upcoming track to jump to it.
-- **Playlists** tree: Recently Played (your last 50 plays, each song once), Liked Songs and your playlists. Click a track to play it in context. The context menu adds to queue, likes/unlikes or adds to another playlist.
+- **Playlists** tree: Recently Played (your last 50 plays, each song once), Liked Songs and your playlists. Click a track to play it in context. The context menu adds to queue, likes/unlikes, adds to another playlist or removes the track from the playlist it is in.
 - **Devices** tree: see your Spotify Connect devices and move playback between them
 - **Status bar** controls and keyboard shortcuts
 - **Listen on Spotify** links on the playing track, search results, artists and albums open the item in Spotify
@@ -68,6 +68,7 @@ Some desktops already use `Ctrl+Alt+L` to lock the screen. Rebind it under **Key
 - Spotify only lists the tracks of playlists you **own or collaborate on**. Followed playlists can still be played with the play button.
 - Search returns at most 10 results per page. Use **Load more** for the next page.
 - The tree shows the first 500 tracks of a playlist.
+- Removing a track from a playlist removes every copy of it, since Spotify's API cannot target a single position.
 - Some devices, such as certain smart speakers, are marked *restricted* by Spotify and cannot be controlled through the API.
 
 ## Development

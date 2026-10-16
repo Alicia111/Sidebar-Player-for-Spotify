@@ -187,6 +187,12 @@
         "icon": "$(add)"
       },
       {
+        "command": "spotifySidebar.removeItemFromPlaylist",
+        "title": "Remove from Playlist",
+        "category": "Spotify",
+        "icon": "$(trash)"
+      },
+      {
         "command": "spotifySidebar.transferToDevice",
         "title": "Play on This Device",
         "category": "Spotify",
@@ -225,6 +231,10 @@
         },
         {
           "command": "spotifySidebar.transferToDevice",
+          "when": "false"
+        },
+        {
+          "command": "spotifySidebar.removeItemFromPlaylist",
           "when": "false"
         },
         {
@@ -285,28 +295,33 @@
       "view/item/context": [
         {
           "command": "spotifySidebar.playItem",
-          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked|recent)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlistTrack|playlist|liked|recent)$/",
           "group": "inline@1"
         },
         {
           "command": "spotifySidebar.playItem",
-          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlist|liked|recent)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlistTrack|playlist|liked|recent)$/",
           "group": "1_play@1"
         },
         {
           "command": "spotifySidebar.queueItem",
-          "when": "view == spotifySidebar.playlists && viewItem == track",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlistTrack)$/",
           "group": "1_play@2"
         },
         {
           "command": "spotifySidebar.toggleLikeItem",
-          "when": "view == spotifySidebar.playlists && viewItem == track || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlistTrack)$/ || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
           "group": "2_library@1"
         },
         {
           "command": "spotifySidebar.addItemToPlaylist",
-          "when": "view == spotifySidebar.playlists && viewItem == track || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
+          "when": "view == spotifySidebar.playlists && viewItem =~ /^(track|playlistTrack)$/ || view == spotifySidebar.queue && viewItem =~ /^queue(Track|Current)$/",
           "group": "2_library@2"
+        },
+        {
+          "command": "spotifySidebar.removeItemFromPlaylist",
+          "when": "view == spotifySidebar.playlists && viewItem == playlistTrack",
+          "group": "2_library@3"
         },
         {
           "command": "spotifySidebar.transferToDevice",

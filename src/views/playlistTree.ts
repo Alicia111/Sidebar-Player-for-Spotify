@@ -18,7 +18,7 @@ const RECENTLY_PLAYED_ID = 'recently-played';
 
 /** Where a track node came from, which decides how clicking it starts playback. */
 export type TrackSource =
-  | { kind: 'playlist'; contextUri: string; position: number }
+  | { kind: 'playlist'; playlist: SimplifiedPlaylist; position: number }
   | { kind: 'uris'; siblingUris: string[]; index: number };
 
 export type PlaylistTreeNode =
@@ -177,7 +177,7 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
       const nodes: PlaylistTreeNode[] = [];
       items.forEach((entry, position) => {
         if (entry.item) {
-          nodes.push({ kind: 'track', item: entry.item, source: { kind: 'playlist', contextUri: playlist.uri, position }, parentId: playlist.id });
+          nodes.push({ kind: 'track', item: entry.item, source: { kind: 'playlist', playlist, position }, parentId: playlist.id });
         }
       });
       return withTruncationNotice(nodes, total);
@@ -201,7 +201,7 @@ export class PlaylistTreeProvider implements vscode.TreeDataProvider<PlaylistTre
 
   private playTrackNode(source: TrackSource): Promise<void> {
     if (source.kind === 'playlist') {
-      return this.actions.play({ contextUri: source.contextUri, offsetPosition: source.position });
+      return this.actions.play({ contextUri: source.playlist.uri, offsetPosition: source.position });
     }
     // Liked Songs and the listening history have no public context URI, so play a window of the list starting at the clicked track.
     return this.actions.play({ uris: source.siblingUris.slice(source.index, source.index + MAX_PLAY_URIS) });
@@ -225,7 +225,8 @@ function buildTrackItem(node: Extract<PlaylistTreeNode, { kind: 'track' }>): vsc
     item.tooltip = `${playable.name} · ${formatDuration(playable.duration_ms)}`;
     item.iconPath = new vscode.ThemeIcon('mic');
   }
-  item.contextValue = 'track';
+  // Only playlists we could list are ours or collaborative, so their tracks can be removed.
+  item.contextValue = node.source.kind === 'playlist' ? 'playlistTrack' : 'track';
   item.command = { command: 'spotifySidebar.playItem', title: 'Play', arguments: [node] };
   return item;
 }

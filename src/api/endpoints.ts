@@ -25,7 +25,7 @@ const COLLECTION_PAGE_SIZE = 50;
 // The February 2026 rules cap an artist's album listing at 10 per page.
 export const ARTIST_ALBUMS_PAGE_SIZE = 10;
 const ARTIST_ALBUM_GROUPS = 'album,single';
-const PLAYLIST_ADD_BATCH_SIZE = 100;
+const PLAYLIST_ITEMS_BATCH_SIZE = 100;
 // The most the recently played endpoint returns in one request.
 const RECENTLY_PLAYED_LIMIT = 50;
 const CONTEXT_PATHS: Record<string, string> = { playlist: '/playlists', album: '/albums', artist: '/artists', show: '/shows' };
@@ -197,8 +197,16 @@ export class SpotifyApi {
 
   async addItemsToPlaylist(playlistId: string, uris: string[]): Promise<void> {
     const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
-    for (const batch of chunk(uris, PLAYLIST_ADD_BATCH_SIZE)) {
+    for (const batch of chunk(uris, PLAYLIST_ITEMS_BATCH_SIZE)) {
       await this.client.request('POST', path, { body: { uris: batch } });
+    }
+  }
+
+  /** Removes every occurrence of each URI; the endpoint cannot target a single position. */
+  async removeItemsFromPlaylist(playlistId: string, uris: string[]): Promise<void> {
+    const path = `/playlists/${encodeURIComponent(playlistId)}/items`;
+    for (const batch of chunk(uris, PLAYLIST_ITEMS_BATCH_SIZE)) {
+      await this.client.request('DELETE', path, { body: { items: batch.map((uri) => ({ uri })) } });
     }
   }
 

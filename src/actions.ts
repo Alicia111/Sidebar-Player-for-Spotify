@@ -234,6 +234,21 @@ export class SpotifyActions implements vscode.Disposable {
     });
   }
 
+  removeFromPlaylist(playlist: SimplifiedPlaylist, item: PlayableItem): Promise<void> {
+    return this.run('Remove from playlist', async () => {
+      const remove = 'Remove';
+      const answer = await vscode.window.showWarningMessage(
+        `Remove "${item.name}" from ${playlist.name}?`,
+        { modal: true, detail: 'If the song is in the playlist more than once, every copy is removed.' },
+        remove,
+      );
+      if (answer !== remove) return;
+      await this.api.removeItemsFromPlaylist(playlist.id, [item.uri]);
+      vscode.window.setStatusBarMessage(`$(check) Removed from ${playlist.name}`, 2500);
+      this.notifyPlaylistsChanged();
+    });
+  }
+
   addCurrentToPlaylist(): Promise<void> {
     const uri = this.player.current?.item?.uri;
     if (!uri) {
